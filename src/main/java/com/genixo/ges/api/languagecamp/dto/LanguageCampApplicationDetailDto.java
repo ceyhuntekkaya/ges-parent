@@ -28,12 +28,8 @@ public class LanguageCampApplicationDetailDto {
     PaymentPreference paymentPreference;
     Instant kvkkAcceptedAt;
 
-    // corporate
-    String companyName;
-    String taxNumber;
-    String companyContactFullName;
-    String companyContactPhone;
-    String companyContactEmail;
+    UUID companyId;
+    CompanyDto company;
 
     Instant createdAt;
     Instant updatedAt;

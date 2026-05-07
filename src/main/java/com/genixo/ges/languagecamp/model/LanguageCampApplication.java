@@ -3,6 +3,7 @@ package com.genixo.ges.languagecamp.model;
 import com.genixo.ges.application.model.ApplicationStatus;
 import com.genixo.ges.applicant.model.ApplicantProfile;
 import com.genixo.ges.auth.model.UserAccount;
+import com.genixo.ges.company.model.Company;
 import com.genixo.ges.common.jpa.Address;
 import com.genixo.ges.common.jpa.BaseEntity;
 import com.genixo.ges.program.model.Program;
@@ -63,6 +64,11 @@ public class LanguageCampApplication extends BaseEntity {
     private Boolean visaFollowByGes;
 
     @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "fullName", column = @Column(name = "emergency_contact_full_name", length = 128)),
+            @AttributeOverride(name = "phone", column = @Column(name = "emergency_contact_phone", length = 32)),
+            @AttributeOverride(name = "relationship", column = @Column(name = "emergency_contact_relationship", length = 64))
+    })
     private EmergencyContact emergencyContact;
 
     @Enumerated(EnumType.STRING)
@@ -75,21 +81,9 @@ public class LanguageCampApplication extends BaseEntity {
     @JoinColumn(name = "guardian_consent_file_id")
     private StoredFile guardianConsentFile; // 18 yaş altı için (top-level)
 
-    // Corporate özel alanlar
-    @Column(length = 255)
-    private String companyName;
-
-    @Column(length = 64)
-    private String taxNumber;
-
-    @Column(length = 128)
-    private String companyContactFullName;
-
-    @Column(length = 32)
-    private String companyContactPhone;
-
-    @Column(length = 255)
-    private String companyContactEmail;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id")
+    private Company company;
 
     @Embedded
     @AttributeOverrides({

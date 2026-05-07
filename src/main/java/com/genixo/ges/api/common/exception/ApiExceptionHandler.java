@@ -6,6 +6,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -17,6 +19,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorDto> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest req) {
@@ -70,19 +74,25 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorDto> handleGeneric(Exception ex, HttpServletRequest req) {
-        ApiErrorDto body = base(req, HttpStatus.INTERNAL_SERVER_ERROR)
+        String traceId = UUID.randomUUID().toString();
+        log.error("Unhandled exception (traceId={}, path={})", traceId, req.getRequestURI(), ex);
+        ApiErrorDto body = base(req, HttpStatus.INTERNAL_SERVER_ERROR, traceId)
             .message("Unexpected error")
             .build();
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
     private ApiErrorDto.ApiErrorDtoBuilder base(HttpServletRequest req, HttpStatus status) {
+        return base(req, status, UUID.randomUUID().toString());
+    }
+
+    private ApiErrorDto.ApiErrorDtoBuilder base(HttpServletRequest req, HttpStatus status, String traceId) {
         return ApiErrorDto.builder()
             .timestamp(Instant.now())
             .status(status.value())
             .error(status.getReasonPhrase())
             .path(req.getRequestURI())
-            .traceId(UUID.randomUUID().toString());
+            .traceId(traceId);
     }
 }
 

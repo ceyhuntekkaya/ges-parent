@@ -9,6 +9,8 @@ import com.genixo.ges.api.languagecamp.dto.LanguageCampApplicationUpdateRequestD
 import com.genixo.ges.application.model.ApplicationStatus;
 import com.genixo.ges.auth.model.UserAccount;
 import com.genixo.ges.auth.repo.UserAccountRepository;
+import com.genixo.ges.company.model.Company;
+import com.genixo.ges.company.repo.CompanyRepository;
 import com.genixo.ges.languagecamp.model.LanguageCampApplication;
 import com.genixo.ges.languagecamp.repo.LanguageCampApplicationRepository;
 import com.genixo.ges.security.AuthUserPrincipal;
@@ -36,10 +38,16 @@ public class LanguageCampApplicationPortalController {
 
     private final LanguageCampApplicationRepository apps;
     private final UserAccountRepository users;
+    private final CompanyRepository companies;
 
-    public LanguageCampApplicationPortalController(LanguageCampApplicationRepository apps, UserAccountRepository users) {
+    public LanguageCampApplicationPortalController(
+        LanguageCampApplicationRepository apps,
+        UserAccountRepository users,
+        CompanyRepository companies
+    ) {
         this.apps = apps;
         this.users = users;
+        this.companies = companies;
     }
 
     @PostMapping
@@ -117,11 +125,11 @@ public class LanguageCampApplicationPortalController {
         if (req.getEmergencyContact() != null) a.setEmergencyContact(req.getEmergencyContact());
         if (req.getPaymentPreference() != null) a.setPaymentPreference(req.getPaymentPreference());
 
-        if (req.getCompanyName() != null) a.setCompanyName(req.getCompanyName());
-        if (req.getTaxNumber() != null) a.setTaxNumber(req.getTaxNumber());
-        if (req.getCompanyContactFullName() != null) a.setCompanyContactFullName(req.getCompanyContactFullName());
-        if (req.getCompanyContactPhone() != null) a.setCompanyContactPhone(req.getCompanyContactPhone());
-        if (req.getCompanyContactEmail() != null) a.setCompanyContactEmail(req.getCompanyContactEmail());
+        if (req.getCompanyId() != null) {
+            Company c = companies.findByIdAndOwner_Id(req.getCompanyId(), principal.getId())
+                .orElseThrow(() -> new ApiProblemException(HttpStatus.BAD_REQUEST, "Invalid companyId"));
+            a.setCompany(c);
+        }
 
         apps.save(a);
         return ResponseEntity.ok(toDetailDto(a));
@@ -170,11 +178,18 @@ public class LanguageCampApplicationPortalController {
             .emergencyContact(a.getEmergencyContact())
             .paymentPreference(a.getPaymentPreference())
             .kvkkAcceptedAt(a.getKvkkAcceptedAt())
-            .companyName(a.getCompanyName())
-            .taxNumber(a.getTaxNumber())
-            .companyContactFullName(a.getCompanyContactFullName())
-            .companyContactPhone(a.getCompanyContactPhone())
-            .companyContactEmail(a.getCompanyContactEmail())
+            .companyId(a.getCompany() == null ? null : a.getCompany().getId())
+            .company(a.getCompany() == null ? null : com.genixo.ges.api.languagecamp.dto.CompanyDto.builder()
+                .id(a.getCompany().getId())
+                .ownerUserId(a.getCompany().getOwner() == null ? null : a.getCompany().getOwner().getId())
+                .name(a.getCompany().getName())
+                .taxNumber(a.getCompany().getTaxNumber())
+                .contactFullName(a.getCompany().getContactFullName())
+                .contactPhone(a.getCompany().getContactPhone())
+                .contactEmail(a.getCompany().getContactEmail())
+                .createdAt(a.getCompany().getCreatedAt())
+                .updatedAt(a.getCompany().getUpdatedAt())
+                .build())
             .createdAt(a.getCreatedAt())
             .updatedAt(a.getUpdatedAt())
             .build();
