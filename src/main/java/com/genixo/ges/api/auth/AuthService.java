@@ -4,6 +4,7 @@ import com.genixo.ges.api.auth.dto.AuthTokensDto;
 import com.genixo.ges.api.common.exception.ApiProblemException;
 import com.genixo.ges.auth.model.RefreshToken;
 import com.genixo.ges.auth.model.UserAccount;
+import com.genixo.ges.auth.model.UserRole;
 import com.genixo.ges.auth.model.UserStatus;
 import com.genixo.ges.auth.repo.RefreshTokenRepository;
 import com.genixo.ges.auth.repo.UserAccountRepository;
@@ -18,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,19 +31,22 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokens;
     private final JwtService jwt;
     private final JwtProperties props;
+    private final PasswordEncoder passwordEncoder;
 
     public AuthService(
         AuthenticationManager authManager,
         UserAccountRepository users,
         RefreshTokenRepository refreshTokens,
         JwtService jwt,
-        JwtProperties props
+        JwtProperties props,
+        PasswordEncoder passwordEncoder
     ) {
         this.authManager = authManager;
         this.users = users;
         this.refreshTokens = refreshTokens;
         this.jwt = jwt;
         this.props = props;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -56,6 +61,44 @@ public class AuthService {
 
         refreshTokens.revokeAllForUser(ua.getId(), Instant.now());
 
+        String access = jwt.issueAccessToken(ua.getId(), ua.getEmail(), ua.getRole().name());
+        String refreshRaw = newRefreshRaw();
+
+        RefreshToken rt = new RefreshToken();
+        rt.setUser(ua);
+        rt.setTokenHash(hash(refreshRaw));
+        rt.setIssuedAt(Instant.now());
+        rt.setExpiresAt(Instant.now().plusMillis(props.getRefreshToken().getExpiration()));
+        rt.setUserAgent(userAgent);
+        rt.setIpAddress(ipAddress);
+        refreshTokens.save(rt);
+
+        return AuthTokensDto.builder()
+            .tokenType("Bearer")
+            .accessToken(access)
+            .expiresInSeconds(props.getExpiration() / 1000)
+            .refreshToken(refreshRaw)
+            .build();
+    }
+
+    @Transactional
+    public AuthTokensDto register(String email, String password, UserRole role, String userAgent, String ipAddress) {
+        String normalizedEmail = email == null ? null : email.trim().toLowerCase();
+        if (normalizedEmail == null || normalizedEmail.isBlank()) {
+            throw new ApiProblemException(HttpStatus.BAD_REQUEST, "Validation failed");
+        }
+        if (users.existsByEmailIgnoreCase(normalizedEmail)) {
+            throw new ApiProblemException(HttpStatus.CONFLICT, "Email already registered");
+        }
+
+        UserAccount ua = new UserAccount();
+        ua.setEmail(normalizedEmail);
+        ua.setPasswordHash(passwordEncoder.encode(password));
+        ua.setRole(role);
+        ua.setStatus(UserStatus.ACTIVE);
+        users.save(ua);
+
+        // Auto-login after registration (same response shape as /login)
         String access = jwt.issueAccessToken(ua.getId(), ua.getEmail(), ua.getRole().name());
         String refreshRaw = newRefreshRaw();
 

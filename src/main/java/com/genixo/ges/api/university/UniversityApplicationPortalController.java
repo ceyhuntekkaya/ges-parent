@@ -12,6 +12,7 @@ import com.genixo.ges.auth.repo.UserAccountRepository;
 import com.genixo.ges.security.AuthUserPrincipal;
 import com.genixo.ges.university.model.UniversityApplication;
 import com.genixo.ges.university.repo.UniversityApplicationRepository;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.UUID;
@@ -44,6 +45,7 @@ public class UniversityApplicationPortalController {
 
     @PostMapping
     @Transactional
+    @Operation(operationId = "portalUniversityApplicationsCreateDraft")
     public ResponseEntity<UniversityApplicationDetailDto> createDraft(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @Valid @RequestBody UniversityApplicationCreateRequestDto req
@@ -61,6 +63,7 @@ public class UniversityApplicationPortalController {
     }
 
     @GetMapping
+    @Operation(operationId = "portalUniversityApplicationsListMine")
     public ResponseEntity<PageDto<UniversityApplicationListItemDto>> myList(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @RequestParam(defaultValue = "0") int page,
@@ -79,6 +82,7 @@ public class UniversityApplicationPortalController {
     }
 
     @GetMapping("/{id}")
+    @Operation(operationId = "portalUniversityApplicationsGetMine")
     public ResponseEntity<UniversityApplicationDetailDto> getMine(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @PathVariable UUID id
@@ -90,6 +94,7 @@ public class UniversityApplicationPortalController {
 
     @PatchMapping("/{id}")
     @Transactional
+    @Operation(operationId = "portalUniversityApplicationsUpdateDraft")
     public ResponseEntity<UniversityApplicationDetailDto> updateDraft(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @PathVariable UUID id,
@@ -128,6 +133,7 @@ public class UniversityApplicationPortalController {
 
     @PostMapping("/{id}/submit")
     @Transactional
+    @Operation(operationId = "portalUniversityApplicationsSubmit")
     public ResponseEntity<UniversityApplicationDetailDto> submit(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @PathVariable UUID id

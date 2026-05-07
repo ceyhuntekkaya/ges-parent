@@ -16,7 +16,6 @@ public class OpenApiConfig {
         return new OpenAPI()
             .components(new Components()
                 .addSecuritySchemes(schemeName, new SecurityScheme()
-                    .name("Authorization")
                     .type(SecurityScheme.Type.HTTP)
                     .scheme("bearer")
                     .bearerFormat("JWT")

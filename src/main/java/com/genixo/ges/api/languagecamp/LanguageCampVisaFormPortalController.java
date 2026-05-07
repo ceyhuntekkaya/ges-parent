@@ -11,6 +11,7 @@ import com.genixo.ges.languagecamp.repo.LanguageCampVisaFormRepository;
 import com.genixo.ges.security.AuthUserPrincipal;
 import com.genixo.ges.storage.model.StoredFile;
 import com.genixo.ges.storage.repo.StoredFileRepository;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -48,6 +49,7 @@ public class LanguageCampVisaFormPortalController {
 
     @PostMapping
     @Transactional
+    @Operation(operationId = "portalLanguageCampVisaFormsCreate")
     public ResponseEntity<LanguageCampVisaFormDto> create(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @Valid @RequestBody LanguageCampVisaFormUpsertRequestDto req
@@ -71,6 +73,7 @@ public class LanguageCampVisaFormPortalController {
     }
 
     @GetMapping
+    @Operation(operationId = "portalLanguageCampVisaFormsListByApplication")
     public ResponseEntity<PageDto<LanguageCampVisaFormDto>> listByApplication(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @RequestParam UUID applicationId,
@@ -99,6 +102,7 @@ public class LanguageCampVisaFormPortalController {
     }
 
     @GetMapping("/{id}")
+    @Operation(operationId = "portalLanguageCampVisaFormsGet")
     public ResponseEntity<LanguageCampVisaFormDto> get(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @PathVariable UUID id
@@ -118,6 +122,7 @@ public class LanguageCampVisaFormPortalController {
 
     @PatchMapping("/{id}")
     @Transactional
+    @Operation(operationId = "portalLanguageCampVisaFormsUpdate")
     public ResponseEntity<LanguageCampVisaFormDto> update(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @PathVariable UUID id,

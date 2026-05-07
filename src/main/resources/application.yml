@@ -40,6 +40,9 @@ spring:
     user: ${spring.datasource.username}
     password: ${spring.datasource.password}
     schemas: public
+    placeholders:
+      admin_email: ${GES_ADMIN_EMAIL:admin@genixo.ai}
+      admin_password_hash: ${GES_ADMIN_PASSWORD_HASH:$2a$10$SB1j96YP8/iWs2bX760qFOLWRcERqgvshJl6FdpxhUG5zXouRMzZ6}
 
 
   # Multipart ayarlar? buraya ta??nd?
@@ -68,6 +71,7 @@ logging:
     com.genixo.education.search: INFO
     org.springframework: WARN
     org.hibernate: WARN
+    org.flywaydb: INFO
     org.hibernate.SQL: OFF
     org.hibernate.type.descriptor.sql.BasicBinder: OFF
     org.hibernate.orm.jdbc.bind: OFF

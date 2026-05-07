@@ -7,6 +7,7 @@ import com.genixo.ges.api.legal.dto.ConsentDocumentUpsertRequestDto;
 import com.genixo.ges.legal.model.ConsentDocument;
 import com.genixo.ges.legal.model.ConsentType;
 import com.genixo.ges.legal.repo.ConsentDocumentRepository;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -35,6 +36,7 @@ public class AdminConsentDocumentController {
     }
 
     @GetMapping
+    @Operation(operationId = "adminConsentDocumentsList")
     public ResponseEntity<PageDto<ConsentDocumentDto>> list(
         @RequestParam(required = false) ConsentType type,
         @RequestParam(required = false) Boolean active,
@@ -59,6 +61,7 @@ public class AdminConsentDocumentController {
     }
 
     @GetMapping("/{id}")
+    @Operation(operationId = "adminConsentDocumentsGet")
     public ResponseEntity<ConsentDocumentDto> get(@PathVariable UUID id) {
         ConsentDocument d = docs.findById(id)
             .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Consent document not found"));
@@ -67,6 +70,7 @@ public class AdminConsentDocumentController {
 
     @PostMapping
     @Transactional
+    @Operation(operationId = "adminConsentDocumentsCreate")
     public ResponseEntity<ConsentDocumentDto> create(@Valid @RequestBody ConsentDocumentUpsertRequestDto req) {
         docs.findByTypeAndLanguageAndVersion(req.getType(), req.getLanguage(), req.getVersion()).ifPresent(x -> {
             throw new ApiProblemException(HttpStatus.CONFLICT, "Consent document already exists (type+language+version)");
@@ -80,6 +84,7 @@ public class AdminConsentDocumentController {
 
     @PutMapping("/{id}")
     @Transactional
+    @Operation(operationId = "adminConsentDocumentsUpdate")
     public ResponseEntity<ConsentDocumentDto> update(@PathVariable UUID id, @Valid @RequestBody ConsentDocumentUpsertRequestDto req) {
         ConsentDocument d = docs.findById(id)
             .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Consent document not found"));
@@ -90,6 +95,7 @@ public class AdminConsentDocumentController {
 
     @DeleteMapping("/{id}")
     @Transactional
+    @Operation(operationId = "adminConsentDocumentsDelete")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         if (!docs.existsById(id)) throw new ApiProblemException(HttpStatus.NOT_FOUND, "Consent document not found");
         docs.deleteById(id);

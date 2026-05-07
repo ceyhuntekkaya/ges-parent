@@ -14,6 +14,7 @@ import com.genixo.ges.catalog.model.University;
 import com.genixo.ges.catalog.repo.CountryRepository;
 import com.genixo.ges.catalog.repo.DepartmentRepository;
 import com.genixo.ges.catalog.repo.UniversityRepository;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -47,6 +48,7 @@ public class CatalogAdminController {
 
     // Countries
     @GetMapping("/countries")
+    @Operation(operationId = "adminCatalogCountriesList")
     public ResponseEntity<PageDto<CountryDto>> listCountries(
         @RequestParam(required = false) String q,
         @RequestParam(defaultValue = "0") int page,
@@ -65,6 +67,7 @@ public class CatalogAdminController {
 
     @PostMapping("/countries")
     @Transactional
+    @Operation(operationId = "adminCatalogCountriesCreate")
     public ResponseEntity<CountryDto> createCountry(@Valid @RequestBody CountryUpsertRequestDto req) {
         countries.findByCodeIgnoreCase(req.getCode()).ifPresent(c -> {
             throw new ApiProblemException(HttpStatus.CONFLICT, "Country code already exists");
@@ -78,6 +81,7 @@ public class CatalogAdminController {
 
     @PutMapping("/countries/{id}")
     @Transactional
+    @Operation(operationId = "adminCatalogCountriesUpdate")
     public ResponseEntity<CountryDto> updateCountry(@PathVariable UUID id, @Valid @RequestBody CountryUpsertRequestDto req) {
         Country c = countries.findById(id).orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Country not found"));
         c.setCode(req.getCode().trim().toUpperCase());
@@ -88,6 +92,7 @@ public class CatalogAdminController {
 
     @DeleteMapping("/countries/{id}")
     @Transactional
+    @Operation(operationId = "adminCatalogCountriesDelete")
     public ResponseEntity<Void> deleteCountry(@PathVariable UUID id) {
         if (!countries.existsById(id)) throw new ApiProblemException(HttpStatus.NOT_FOUND, "Country not found");
         countries.deleteById(id);
@@ -96,6 +101,7 @@ public class CatalogAdminController {
 
     // Universities
     @GetMapping("/universities")
+    @Operation(operationId = "adminCatalogUniversitiesList")
     public ResponseEntity<PageDto<UniversityDto>> listUniversities(
         @RequestParam(required = false) String q,
         @RequestParam(required = false) UUID countryId,
@@ -118,6 +124,7 @@ public class CatalogAdminController {
 
     @PostMapping("/universities")
     @Transactional
+    @Operation(operationId = "adminCatalogUniversitiesCreate")
     public ResponseEntity<UniversityDto> createUniversity(@Valid @RequestBody UniversityUpsertRequestDto req) {
         Country country = countries.findById(req.getCountryId())
             .orElseThrow(() -> new ApiProblemException(HttpStatus.BAD_REQUEST, "Invalid countryId"));
@@ -131,6 +138,7 @@ public class CatalogAdminController {
 
     @PutMapping("/universities/{id}")
     @Transactional
+    @Operation(operationId = "adminCatalogUniversitiesUpdate")
     public ResponseEntity<UniversityDto> updateUniversity(@PathVariable UUID id, @Valid @RequestBody UniversityUpsertRequestDto req) {
         University u = universities.findById(id).orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "University not found"));
         Country country = countries.findById(req.getCountryId())
@@ -144,6 +152,7 @@ public class CatalogAdminController {
 
     @DeleteMapping("/universities/{id}")
     @Transactional
+    @Operation(operationId = "adminCatalogUniversitiesDelete")
     public ResponseEntity<Void> deleteUniversity(@PathVariable UUID id) {
         if (!universities.existsById(id)) throw new ApiProblemException(HttpStatus.NOT_FOUND, "University not found");
         universities.deleteById(id);
@@ -152,6 +161,7 @@ public class CatalogAdminController {
 
     // Departments
     @GetMapping("/departments")
+    @Operation(operationId = "adminCatalogDepartmentsList")
     public ResponseEntity<PageDto<DepartmentDto>> listDepartments(
         @RequestParam(required = false) String q,
         @RequestParam(defaultValue = "0") int page,
@@ -170,6 +180,7 @@ public class CatalogAdminController {
 
     @PostMapping("/departments")
     @Transactional
+    @Operation(operationId = "adminCatalogDepartmentsCreate")
     public ResponseEntity<DepartmentDto> createDepartment(@Valid @RequestBody DepartmentUpsertRequestDto req) {
         Department d = new Department();
         d.setName(req.getName().trim());
@@ -180,6 +191,7 @@ public class CatalogAdminController {
 
     @PutMapping("/departments/{id}")
     @Transactional
+    @Operation(operationId = "adminCatalogDepartmentsUpdate")
     public ResponseEntity<DepartmentDto> updateDepartment(@PathVariable UUID id, @Valid @RequestBody DepartmentUpsertRequestDto req) {
         Department d = departments.findById(id).orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Department not found"));
         d.setName(req.getName().trim());
@@ -190,6 +202,7 @@ public class CatalogAdminController {
 
     @DeleteMapping("/departments/{id}")
     @Transactional
+    @Operation(operationId = "adminCatalogDepartmentsDelete")
     public ResponseEntity<Void> deleteDepartment(@PathVariable UUID id) {
         if (!departments.existsById(id)) throw new ApiProblemException(HttpStatus.NOT_FOUND, "Department not found");
         departments.deleteById(id);

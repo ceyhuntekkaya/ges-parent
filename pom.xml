@@ -147,7 +147,10 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
-            <version>9.22.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
         <dependency>
             <groupId>javax.xml.bind</groupId>
@@ -216,7 +219,7 @@
                             <password>${JIB_REGISTRY_PASSWORD}</password>
                         </auth>
                     </to>
-                    <skip>false</skip>
+                    <skip>true</skip>
                 </configuration>
             </plugin>
             <plugin>

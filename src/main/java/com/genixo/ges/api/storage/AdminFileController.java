@@ -4,6 +4,7 @@ import com.genixo.ges.api.common.exception.ApiProblemException;
 import com.genixo.ges.storage.FileStorageService;
 import com.genixo.ges.storage.model.StoredFile;
 import com.genixo.ges.storage.repo.StoredFileRepository;
+import io.swagger.v3.oas.annotations.Operation;
 import java.nio.file.Files;
 import java.util.UUID;
 import org.springframework.core.io.FileSystemResource;
@@ -30,6 +31,7 @@ public class AdminFileController {
     }
 
     @GetMapping("/{id}/download")
+    @Operation(operationId = "adminFilesDownload")
     public ResponseEntity<Resource> download(@PathVariable UUID id) {
         StoredFile sf = storedFiles.findById(id)
             .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "File not found"));

@@ -7,6 +7,7 @@ import com.genixo.ges.api.docreq.dto.DocumentRequirementUpsertRequestDto;
 import com.genixo.ges.docreq.model.DocumentRequirement;
 import com.genixo.ges.docreq.model.DocumentRequirementScope;
 import com.genixo.ges.docreq.repo.DocumentRequirementRepository;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -35,6 +36,7 @@ public class AdminDocumentRequirementController {
     }
 
     @GetMapping
+    @Operation(operationId = "adminDocumentRequirementsList")
     public ResponseEntity<PageDto<DocumentRequirementDto>> list(
         @RequestParam DocumentRequirementScope scope,
         @RequestParam(required = false) String category,
@@ -60,6 +62,7 @@ public class AdminDocumentRequirementController {
     }
 
     @GetMapping("/{id}")
+    @Operation(operationId = "adminDocumentRequirementsGet")
     public ResponseEntity<DocumentRequirementDto> get(@PathVariable UUID id) {
         DocumentRequirement r = requirements.findById(id)
             .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Requirement not found"));
@@ -68,6 +71,7 @@ public class AdminDocumentRequirementController {
 
     @PostMapping
     @Transactional
+    @Operation(operationId = "adminDocumentRequirementsCreate")
     public ResponseEntity<DocumentRequirementDto> create(@Valid @RequestBody DocumentRequirementUpsertRequestDto req) {
         requirements.findByScopeAndKey(req.getScope(), req.getKey()).ifPresent(x -> {
             throw new ApiProblemException(HttpStatus.CONFLICT, "Requirement key already exists for scope");
@@ -80,6 +84,7 @@ public class AdminDocumentRequirementController {
 
     @PutMapping("/{id}")
     @Transactional
+    @Operation(operationId = "adminDocumentRequirementsUpdate")
     public ResponseEntity<DocumentRequirementDto> update(@PathVariable UUID id, @Valid @RequestBody DocumentRequirementUpsertRequestDto req) {
         DocumentRequirement r = requirements.findById(id)
             .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Requirement not found"));
@@ -90,6 +95,7 @@ public class AdminDocumentRequirementController {
 
     @DeleteMapping("/{id}")
     @Transactional
+    @Operation(operationId = "adminDocumentRequirementsDelete")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         if (!requirements.existsById(id)) throw new ApiProblemException(HttpStatus.NOT_FOUND, "Requirement not found");
         requirements.deleteById(id);

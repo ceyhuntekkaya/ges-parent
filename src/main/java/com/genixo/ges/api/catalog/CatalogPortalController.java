@@ -7,6 +7,7 @@ import com.genixo.ges.api.common.dto.PageDto;
 import com.genixo.ges.catalog.repo.CountryRepository;
 import com.genixo.ges.catalog.repo.DepartmentRepository;
 import com.genixo.ges.catalog.repo.UniversityRepository;
+import io.swagger.v3.oas.annotations.Operation;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -31,6 +32,7 @@ public class CatalogPortalController {
     }
 
     @GetMapping("/countries")
+    @Operation(operationId = "portalCatalogCountriesList")
     public ResponseEntity<PageDto<CountryDto>> countries(
         @RequestParam(required = false) String q,
         @RequestParam(defaultValue = "0") int page,
@@ -48,6 +50,7 @@ public class CatalogPortalController {
     }
 
     @GetMapping("/universities")
+    @Operation(operationId = "portalCatalogUniversitiesList")
     public ResponseEntity<PageDto<UniversityDto>> universities(
         @RequestParam(required = false) String q,
         @RequestParam(required = false) UUID countryId,
@@ -74,6 +77,7 @@ public class CatalogPortalController {
     }
 
     @GetMapping("/departments")
+    @Operation(operationId = "portalCatalogDepartmentsList")
     public ResponseEntity<PageDto<DepartmentDto>> departments(
         @RequestParam(required = false) String q,
         @RequestParam(defaultValue = "0") int page,

@@ -12,6 +12,7 @@ import com.genixo.ges.legal.model.ConsentType;
 import com.genixo.ges.legal.repo.ConsentAcceptanceRepository;
 import com.genixo.ges.legal.repo.ConsentDocumentRepository;
 import com.genixo.ges.security.AuthUserPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -50,6 +51,7 @@ public class PortalConsentController {
     }
 
     @GetMapping("/active")
+    @Operation(operationId = "portalConsentsListActive")
     public ResponseEntity<PageDto<ConsentDocumentDto>> listActive(
         @RequestParam(required = false) ConsentType type,
         @RequestParam(defaultValue = "tr") String language,
@@ -74,6 +76,7 @@ public class PortalConsentController {
     }
 
     @GetMapping("/required")
+    @Operation(operationId = "portalConsentsRequired")
     public ResponseEntity<List<ConsentDocumentDto>> required(
         @RequestParam(defaultValue = "tr") String language
     ) {
@@ -89,6 +92,7 @@ public class PortalConsentController {
 
     @PostMapping("/accept")
     @Transactional
+    @Operation(operationId = "portalConsentsAccept")
     public ResponseEntity<ConsentAcceptanceDto> accept(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @Valid @RequestBody ConsentAcceptanceRequestDto req,

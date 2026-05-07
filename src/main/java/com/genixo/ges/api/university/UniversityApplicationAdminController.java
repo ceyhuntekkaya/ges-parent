@@ -8,6 +8,7 @@ import com.genixo.ges.api.university.dto.UniversityApplicationListItemDto;
 import com.genixo.ges.application.model.ApplicationStatus;
 import com.genixo.ges.university.model.UniversityApplication;
 import com.genixo.ges.university.repo.UniversityApplicationRepository;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -33,6 +34,7 @@ public class UniversityApplicationAdminController {
     }
 
     @GetMapping
+    @Operation(operationId = "adminUniversityApplicationsList")
     public ResponseEntity<PageDto<UniversityApplicationListItemDto>> list(
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size,
@@ -55,6 +57,7 @@ public class UniversityApplicationAdminController {
     }
 
     @GetMapping("/{id}")
+    @Operation(operationId = "adminUniversityApplicationsGet")
     public ResponseEntity<UniversityApplicationDetailDto> get(@PathVariable UUID id) {
         UniversityApplication ua = applications.findById(id)
             .orElseThrow(() -> new ApiProblemException(org.springframework.http.HttpStatus.NOT_FOUND, "Application not found"));
@@ -63,6 +66,7 @@ public class UniversityApplicationAdminController {
 
     @PatchMapping("/{id}/status")
     @Transactional
+    @Operation(operationId = "adminUniversityApplicationsChangeStatus")
     public ResponseEntity<UniversityApplicationDetailDto> changeStatus(
         @PathVariable UUID id,
         @Valid @RequestBody ApplicationStatusChangeRequestDto req

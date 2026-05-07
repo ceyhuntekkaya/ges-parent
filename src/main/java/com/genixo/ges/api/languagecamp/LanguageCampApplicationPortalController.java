@@ -12,6 +12,7 @@ import com.genixo.ges.auth.repo.UserAccountRepository;
 import com.genixo.ges.languagecamp.model.LanguageCampApplication;
 import com.genixo.ges.languagecamp.repo.LanguageCampApplicationRepository;
 import com.genixo.ges.security.AuthUserPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -43,6 +44,7 @@ public class LanguageCampApplicationPortalController {
 
     @PostMapping
     @Transactional
+    @Operation(operationId = "portalLanguageCampApplicationsCreateDraft")
     public ResponseEntity<LanguageCampApplicationDetailDto> createDraft(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @Valid @RequestBody LanguageCampApplicationCreateRequestDto req
@@ -60,6 +62,7 @@ public class LanguageCampApplicationPortalController {
     }
 
     @GetMapping
+    @Operation(operationId = "portalLanguageCampApplicationsListMine")
     public ResponseEntity<PageDto<LanguageCampApplicationListItemDto>> myList(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @RequestParam(defaultValue = "0") int page,
@@ -79,6 +82,7 @@ public class LanguageCampApplicationPortalController {
     }
 
     @GetMapping("/{id}")
+    @Operation(operationId = "portalLanguageCampApplicationsGetMine")
     public ResponseEntity<LanguageCampApplicationDetailDto> getMine(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @PathVariable UUID id
@@ -90,6 +94,7 @@ public class LanguageCampApplicationPortalController {
 
     @PatchMapping("/{id}")
     @Transactional
+    @Operation(operationId = "portalLanguageCampApplicationsUpdateDraft")
     public ResponseEntity<LanguageCampApplicationDetailDto> updateDraft(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @PathVariable UUID id,
@@ -124,6 +129,7 @@ public class LanguageCampApplicationPortalController {
 
     @PostMapping("/{id}/submit")
     @Transactional
+    @Operation(operationId = "portalLanguageCampApplicationsSubmit")
     public ResponseEntity<LanguageCampApplicationDetailDto> submit(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @PathVariable UUID id

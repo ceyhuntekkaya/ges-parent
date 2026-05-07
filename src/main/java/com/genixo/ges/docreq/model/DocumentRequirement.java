@@ -24,7 +24,7 @@ public class DocumentRequirement extends BaseEntity {
     @Column(length = 32)
     private String category; // e.g. LANGUAGE_CAMP: INDIVIDUAL/CORPORATE/FAMILY
 
-    @Column(nullable = false, length = 128)
+    @Column(name = "requirement_key", nullable = false, length = 128)
     private String key; // stable identifier used by UI/backoffice (slot)
 
     @Column(nullable = false)

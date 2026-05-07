@@ -11,6 +11,7 @@ import com.genixo.ges.docreq.repo.ApplicationDocumentRepository;
 import com.genixo.ges.docreq.repo.DocumentRequirementRepository;
 import com.genixo.ges.security.AuthUserPrincipal;
 import com.genixo.ges.storage.model.StoredFile;
+import io.swagger.v3.oas.annotations.Operation;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -45,6 +46,7 @@ public class PortalApplicationDocumentChecklistController {
     }
 
     @GetMapping
+    @Operation(operationId = "portalApplicationDocumentChecklistGet")
     public ResponseEntity<ApplicationDocumentChecklistDto> getChecklist(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @RequestParam DocumentRequirementScope scope,

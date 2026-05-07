@@ -9,6 +9,7 @@ import com.genixo.ges.docreq.model.ApplicationDocument;
 import com.genixo.ges.docreq.repo.ApplicationDocumentRepository;
 import com.genixo.ges.storage.FileStorageService;
 import com.genixo.ges.storage.model.StoredFile;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.core.io.FileSystemResource;
@@ -41,6 +42,7 @@ public class AdminApplicationDocumentController {
     }
 
     @GetMapping
+    @Operation(operationId = "adminApplicationDocumentsList")
     public ResponseEntity<PageDto<ApplicationDocumentDto>> list(
         @RequestParam com.genixo.ges.docreq.model.DocumentRequirementScope scope,
         @RequestParam UUID applicationId,
@@ -59,6 +61,7 @@ public class AdminApplicationDocumentController {
     }
 
     @GetMapping("/{id}")
+    @Operation(operationId = "adminApplicationDocumentsGet")
     public ResponseEntity<ApplicationDocumentDto> get(@PathVariable UUID id) {
         ApplicationDocument doc = docs.findById(id)
             .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Document not found"));
@@ -66,6 +69,7 @@ public class AdminApplicationDocumentController {
     }
 
     @GetMapping("/{id}/file")
+    @Operation(operationId = "adminApplicationDocumentsDownloadFile")
     public ResponseEntity<Resource> downloadFile(@PathVariable UUID id) {
         ApplicationDocument doc = docs.findById(id)
             .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Document not found"));
@@ -86,6 +90,7 @@ public class AdminApplicationDocumentController {
 
     @PatchMapping("/{id}/review")
     @Transactional
+    @Operation(operationId = "adminApplicationDocumentsReview")
     public ResponseEntity<ApplicationDocumentDto> review(@PathVariable UUID id, @Valid @RequestBody ApplicationDocumentReviewRequestDto req) {
         ApplicationDocument doc = docs.findById(id)
             .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Document not found"));

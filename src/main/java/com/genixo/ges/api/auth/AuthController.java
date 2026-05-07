@@ -4,8 +4,10 @@ import com.genixo.ges.api.auth.dto.AuthTokensDto;
 import com.genixo.ges.api.auth.dto.LoginRequestDto;
 import com.genixo.ges.api.auth.dto.MeDto;
 import com.genixo.ges.api.auth.dto.RefreshRequestDto;
+import com.genixo.ges.api.auth.dto.RegisterRequestDto;
 import com.genixo.ges.auth.repo.UserAccountRepository;
 import com.genixo.ges.security.AuthUserPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.Optional;
@@ -30,13 +32,23 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(operationId = "authLogin")
     public ResponseEntity<AuthTokensDto> login(@Valid @RequestBody LoginRequestDto req, HttpServletRequest http) {
         String ua = Optional.ofNullable(http.getHeader("User-Agent")).orElse("unknown");
         String ip = Optional.ofNullable(http.getRemoteAddr()).orElse("unknown");
         return ResponseEntity.ok(auth.login(req.getEmail(), req.getPassword(), ua, ip));
     }
 
+    @PostMapping("/register")
+    @Operation(operationId = "authRegister")
+    public ResponseEntity<AuthTokensDto> register(@Valid @RequestBody RegisterRequestDto req, HttpServletRequest http) {
+        String ua = Optional.ofNullable(http.getHeader("User-Agent")).orElse("unknown");
+        String ip = Optional.ofNullable(http.getRemoteAddr()).orElse("unknown");
+        return ResponseEntity.ok(auth.register(req.getEmail(), req.getPassword(), req.getRole(), ua, ip));
+    }
+
     @PostMapping("/refresh")
+    @Operation(operationId = "authRefresh")
     public ResponseEntity<AuthTokensDto> refresh(@Valid @RequestBody RefreshRequestDto req, HttpServletRequest http) {
         String ua = Optional.ofNullable(http.getHeader("User-Agent")).orElse("unknown");
         String ip = Optional.ofNullable(http.getRemoteAddr()).orElse("unknown");
@@ -44,12 +56,14 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @Operation(operationId = "authLogout")
     public ResponseEntity<Void> logout(@Valid @RequestBody RefreshRequestDto req) {
         auth.logout(req.getRefreshToken());
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/me")
+    @Operation(operationId = "authMe")
     public ResponseEntity<MeDto> me(@AuthenticationPrincipal AuthUserPrincipal principal) {
         // principal has minimal fields; return canonical values from DB
         var ua = users.findById(principal.getId()).orElseThrow();

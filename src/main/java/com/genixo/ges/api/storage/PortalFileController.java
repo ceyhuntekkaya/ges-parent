@@ -9,6 +9,7 @@ import com.genixo.ges.storage.FileStorageService;
 import com.genixo.ges.storage.model.StoredFile;
 import com.genixo.ges.storage.model.StoredFilePurpose;
 import com.genixo.ges.storage.repo.StoredFileRepository;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.file.Files;
 import java.util.UUID;
@@ -42,6 +43,7 @@ public class PortalFileController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(operationId = "portalFilesUpload")
     public ResponseEntity<StoredFileDto> upload(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @RequestParam("file") MultipartFile file,
@@ -55,6 +57,7 @@ public class PortalFileController {
     }
 
     @GetMapping("/{id}/download")
+    @Operation(operationId = "portalFilesDownload")
     public ResponseEntity<Resource> download(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @PathVariable UUID id,

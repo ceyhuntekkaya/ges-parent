@@ -6,6 +6,7 @@ import com.genixo.ges.api.university.dto.ApplicationStatusChangeRequestDto;
 import com.genixo.ges.application.model.ApplicationStatus;
 import com.genixo.ges.languagecamp.model.LanguageCampApplication;
 import com.genixo.ges.languagecamp.repo.LanguageCampApplicationRepository;
+import io.swagger.v3.oas.annotations.Operation;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -31,6 +32,7 @@ public class LanguageCampApplicationAdminController {
     }
 
     @GetMapping
+    @Operation(operationId = "adminLanguageCampApplicationsList")
     public ResponseEntity<PageDto<com.genixo.ges.api.languagecamp.dto.LanguageCampApplicationListItemDto>> list(
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size,
@@ -59,6 +61,7 @@ public class LanguageCampApplicationAdminController {
     }
 
     @GetMapping("/{id}")
+    @Operation(operationId = "adminLanguageCampApplicationsGet")
     public ResponseEntity<com.genixo.ges.api.languagecamp.dto.LanguageCampApplicationDetailDto> get(@PathVariable UUID id) {
         LanguageCampApplication a = apps.findById(id)
             .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Application not found"));
@@ -87,6 +90,7 @@ public class LanguageCampApplicationAdminController {
 
     @PatchMapping("/{id}/status")
     @Transactional
+    @Operation(operationId = "adminLanguageCampApplicationsChangeStatus")
     public ResponseEntity<com.genixo.ges.api.languagecamp.dto.LanguageCampApplicationDetailDto> changeStatus(
         @PathVariable UUID id,
         @RequestBody ApplicationStatusChangeRequestDto req

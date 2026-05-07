@@ -5,6 +5,7 @@ import com.genixo.ges.api.common.exception.ApiProblemException;
 import com.genixo.ges.api.languagecamp.dto.LanguageCampVisaFormDto;
 import com.genixo.ges.languagecamp.model.LanguageCampVisaForm;
 import com.genixo.ges.languagecamp.repo.LanguageCampVisaFormRepository;
+import io.swagger.v3.oas.annotations.Operation;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -27,6 +28,7 @@ public class LanguageCampVisaFormAdminController {
     }
 
     @GetMapping
+    @Operation(operationId = "adminLanguageCampVisaFormsListByApplication")
     public ResponseEntity<PageDto<LanguageCampVisaFormDto>> listByApplication(
         @RequestParam UUID applicationId,
         @RequestParam(defaultValue = "0") int page,
@@ -46,6 +48,7 @@ public class LanguageCampVisaFormAdminController {
     }
 
     @GetMapping("/{id}")
+    @Operation(operationId = "adminLanguageCampVisaFormsGet")
     public ResponseEntity<LanguageCampVisaFormDto> get(@PathVariable UUID id) {
         LanguageCampVisaForm f = forms.findById(id)
             .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Visa form not found"));

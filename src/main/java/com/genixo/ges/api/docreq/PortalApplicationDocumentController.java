@@ -13,6 +13,7 @@ import com.genixo.ges.security.AuthUserPrincipal;
 import com.genixo.ges.storage.FileStorageService;
 import com.genixo.ges.storage.model.StoredFile;
 import com.genixo.ges.storage.repo.StoredFileRepository;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.UUID;
@@ -63,6 +64,7 @@ public class PortalApplicationDocumentController {
 
     @PostMapping
     @Transactional
+    @Operation(operationId = "portalApplicationDocumentsAttach")
     public ResponseEntity<ApplicationDocumentDto> attach(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @Valid @RequestBody ApplicationDocumentAttachRequestDto req
@@ -96,6 +98,7 @@ public class PortalApplicationDocumentController {
     }
 
     @GetMapping("/by-application")
+    @Operation(operationId = "portalApplicationDocumentsListByApplication")
     public ResponseEntity<PageDto<ApplicationDocumentDto>> listByApplication(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @RequestParam UUID applicationId,
@@ -120,6 +123,7 @@ public class PortalApplicationDocumentController {
     }
 
     @GetMapping("/{id}")
+    @Operation(operationId = "portalApplicationDocumentsGet")
     public ResponseEntity<ApplicationDocumentDto> get(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @PathVariable UUID id
@@ -131,6 +135,7 @@ public class PortalApplicationDocumentController {
     }
 
     @GetMapping("/{id}/file")
+    @Operation(operationId = "portalApplicationDocumentsDownloadFile")
     public ResponseEntity<Resource> downloadFile(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @PathVariable UUID id

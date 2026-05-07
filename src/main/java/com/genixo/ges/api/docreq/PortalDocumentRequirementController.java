@@ -4,6 +4,7 @@ import com.genixo.ges.api.common.dto.PageDto;
 import com.genixo.ges.api.docreq.dto.DocumentRequirementDto;
 import com.genixo.ges.docreq.model.DocumentRequirementScope;
 import com.genixo.ges.docreq.repo.DocumentRequirementRepository;
+import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +24,7 @@ public class PortalDocumentRequirementController {
     }
 
     @GetMapping
+    @Operation(operationId = "portalDocumentRequirementsList")
     public ResponseEntity<PageDto<DocumentRequirementDto>> listActive(
         @RequestParam DocumentRequirementScope scope,
         @RequestParam(required = false) String category,
