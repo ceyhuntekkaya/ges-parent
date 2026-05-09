@@ -11,6 +11,8 @@ import lombok.Value;
 @Builder
 public class UniversityApplicationListItemDto {
     UUID id;
+    String firstName;
+    String lastName;
     ApplicationStatus status;
     EducationLevel educationLevel;
     Instant createdAt;

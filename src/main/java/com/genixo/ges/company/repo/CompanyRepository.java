@@ -8,10 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CompanyRepository extends JpaRepository<Company, UUID> {
-    Page<Company> findByOwner_Id(UUID ownerUserId, Pageable pageable);
-    Page<Company> findByOwner_IdAndNameContainingIgnoreCase(UUID ownerUserId, String name, Pageable pageable);
-    Optional<Company> findByIdAndOwner_Id(UUID id, UUID ownerUserId);
-
     Page<Company> findByNameContainingIgnoreCase(String name, Pageable pageable);
+    Optional<Company> findByCode(String code);
 }
 

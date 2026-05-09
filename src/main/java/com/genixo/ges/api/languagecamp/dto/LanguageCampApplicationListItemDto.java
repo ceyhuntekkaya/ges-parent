@@ -11,6 +11,8 @@ import lombok.Value;
 @Builder
 public class LanguageCampApplicationListItemDto {
     UUID id;
+    String firstName;
+    String lastName;
     ApplicationStatus status;
     LanguageCampCategory category;
     Instant createdAt;

@@ -79,8 +79,11 @@ public class UniversityApplicationAdminController {
     }
 
     private UniversityApplicationListItemDto toListItemDto(UniversityApplication ua) {
+        var p = ua.getApplicantProfile();
         return UniversityApplicationListItemDto.builder()
             .id(ua.getId())
+            .firstName(p == null ? null : p.getFirstName())
+            .lastName(p == null ? null : p.getLastName())
             .status(ua.getStatus())
             .educationLevel(ua.getEducationLevel())
             .createdAt(ua.getCreatedAt())

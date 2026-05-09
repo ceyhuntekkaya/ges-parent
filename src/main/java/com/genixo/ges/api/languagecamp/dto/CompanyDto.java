@@ -9,7 +9,7 @@ import lombok.Value;
 @Builder
 public class CompanyDto {
     UUID id;
-    UUID ownerUserId;
+    String code;
     String name;
     String taxNumber;
     String contactFullName;

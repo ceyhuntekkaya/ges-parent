@@ -14,14 +14,26 @@ import lombok.Value;
 public class LanguageCampApplicationUpdateRequestDto {
     LanguageCampCategory category;
     UUID programId;
-    LocalDate startDate;
-    LocalDate endDate;
     AccommodationType accommodationType;
     Boolean visaNeeded;
     Boolean visaFollowByGes;
     EmergencyContact emergencyContact;
     PaymentPreference paymentPreference;
 
-    UUID companyId;
+    String companyCode;
+
+    String firstName;
+    String lastName;
+    LocalDate birthDate;
+    String phone;
+    Boolean isItSelf;
+    Integer numberOfApplicant;
+
+    Boolean under18;
+    String parentFullName;
+    String parentPhoneNumber;
+    String parentEmailAddress;
+    String parentRelationship;
+    String userNotes;
 }
 

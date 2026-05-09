@@ -64,6 +64,18 @@ public class LanguageCampApplicationPortalController {
         a.setApplicant(applicant);
         a.setCategory(req.getCategory());
         a.setStatus(ApplicationStatus.DRAFT);
+        a.setFirstName(req.getFirstName());
+        a.setLastName(req.getLastName());
+        a.setBirthDate(req.getBirthDate());
+        a.setPhone(req.getPhone());
+        a.setIsItSelf(req.getIsItSelf());
+        a.setNumberOfApplicant(req.getNumberOfApplicant());
+        a.setUnder18(req.getUnder18());
+        a.setParentFullName(req.getParentFullName());
+        a.setParentPhoneNumber(req.getParentPhoneNumber());
+        a.setParentEmailAddress(req.getParentEmailAddress());
+        a.setParentRelationship(req.getParentRelationship());
+        a.setUserNotes(req.getUserNotes());
         apps.save(a);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(toDetailDto(a));
@@ -117,17 +129,27 @@ public class LanguageCampApplicationPortalController {
 
         if (req.getCategory() != null) a.setCategory(req.getCategory());
         // programId mapping will be added once ProgramRepository exists; keep ID in DTO for now
-        if (req.getStartDate() != null) a.setStartDate(req.getStartDate());
-        if (req.getEndDate() != null) a.setEndDate(req.getEndDate());
         if (req.getAccommodationType() != null) a.setAccommodationType(req.getAccommodationType());
         if (req.getVisaNeeded() != null) a.setVisaNeeded(req.getVisaNeeded());
         if (req.getVisaFollowByGes() != null) a.setVisaFollowByGes(req.getVisaFollowByGes());
         if (req.getEmergencyContact() != null) a.setEmergencyContact(req.getEmergencyContact());
         if (req.getPaymentPreference() != null) a.setPaymentPreference(req.getPaymentPreference());
+        if (req.getFirstName() != null) a.setFirstName(req.getFirstName());
+        if (req.getLastName() != null) a.setLastName(req.getLastName());
+        if (req.getBirthDate() != null) a.setBirthDate(req.getBirthDate());
+        if (req.getPhone() != null) a.setPhone(req.getPhone());
+        if (req.getIsItSelf() != null) a.setIsItSelf(req.getIsItSelf());
+        if (req.getNumberOfApplicant() != null) a.setNumberOfApplicant(req.getNumberOfApplicant());
+        if (req.getUnder18() != null) a.setUnder18(req.getUnder18());
+        if (req.getParentFullName() != null) a.setParentFullName(req.getParentFullName());
+        if (req.getParentPhoneNumber() != null) a.setParentPhoneNumber(req.getParentPhoneNumber());
+        if (req.getParentEmailAddress() != null) a.setParentEmailAddress(req.getParentEmailAddress());
+        if (req.getParentRelationship() != null) a.setParentRelationship(req.getParentRelationship());
+        if (req.getUserNotes() != null) a.setUserNotes(req.getUserNotes());
 
-        if (req.getCompanyId() != null) {
-            Company c = companies.findByIdAndOwner_Id(req.getCompanyId(), principal.getId())
-                .orElseThrow(() -> new ApiProblemException(HttpStatus.BAD_REQUEST, "Invalid companyId"));
+        if (req.getCompanyCode() != null && !req.getCompanyCode().isBlank()) {
+            Company c = companies.findByCode(req.getCompanyCode().trim())
+                .orElseThrow(() -> new ApiProblemException(HttpStatus.BAD_REQUEST, "Invalid companyCode"));
             a.setCompany(c);
         }
 
@@ -157,6 +179,8 @@ public class LanguageCampApplicationPortalController {
     private LanguageCampApplicationListItemDto toListItemDto(LanguageCampApplication a) {
         return LanguageCampApplicationListItemDto.builder()
             .id(a.getId())
+            .firstName(a.getFirstName())
+            .lastName(a.getLastName())
             .status(a.getStatus())
             .category(a.getCategory())
             .createdAt(a.getCreatedAt())
@@ -170,8 +194,6 @@ public class LanguageCampApplicationPortalController {
             .status(a.getStatus())
             .category(a.getCategory())
             .programId(a.getProgram() == null ? null : a.getProgram().getId())
-            .startDate(a.getStartDate())
-            .endDate(a.getEndDate())
             .accommodationType(a.getAccommodationType())
             .visaNeeded(a.getVisaNeeded())
             .visaFollowByGes(a.getVisaFollowByGes())
@@ -181,7 +203,7 @@ public class LanguageCampApplicationPortalController {
             .companyId(a.getCompany() == null ? null : a.getCompany().getId())
             .company(a.getCompany() == null ? null : com.genixo.ges.api.languagecamp.dto.CompanyDto.builder()
                 .id(a.getCompany().getId())
-                .ownerUserId(a.getCompany().getOwner() == null ? null : a.getCompany().getOwner().getId())
+                .code(a.getCompany().getCode())
                 .name(a.getCompany().getName())
                 .taxNumber(a.getCompany().getTaxNumber())
                 .contactFullName(a.getCompany().getContactFullName())
@@ -190,6 +212,18 @@ public class LanguageCampApplicationPortalController {
                 .createdAt(a.getCompany().getCreatedAt())
                 .updatedAt(a.getCompany().getUpdatedAt())
                 .build())
+            .firstName(a.getFirstName())
+            .lastName(a.getLastName())
+            .birthDate(a.getBirthDate())
+            .phone(a.getPhone())
+            .isItSelf(a.getIsItSelf())
+            .numberOfApplicant(a.getNumberOfApplicant())
+            .under18(a.getUnder18())
+            .parentFullName(a.getParentFullName())
+            .parentPhoneNumber(a.getParentPhoneNumber())
+            .parentEmailAddress(a.getParentEmailAddress())
+            .parentRelationship(a.getParentRelationship())
+            .userNotes(a.getUserNotes())
             .createdAt(a.getCreatedAt())
             .updatedAt(a.getUpdatedAt())
             .build();

@@ -1,7 +1,6 @@
 package com.genixo.ges.languagecamp.model;
 
 import com.genixo.ges.application.model.ApplicationStatus;
-import com.genixo.ges.applicant.model.ApplicantProfile;
 import com.genixo.ges.auth.model.UserAccount;
 import com.genixo.ges.company.model.Company;
 import com.genixo.ges.common.jpa.Address;
@@ -37,9 +36,23 @@ public class LanguageCampApplication extends BaseEntity {
     @JoinColumn(name = "applicant_user_id", nullable = false)
     private UserAccount applicant;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "applicant_profile_id")
-    private ApplicantProfile applicantProfile;
+    @Column(name = "first_name", length = 64)
+    private String firstName;
+
+    @Column(name = "last_name", length = 64)
+    private String lastName;
+
+    @Column(name = "birth_date")
+    private LocalDate birthDate;
+
+    @Column(name = "phone", length = 32)
+    private String phone;
+
+    @Column(name = "is_it_self")
+    private Boolean isItSelf;
+
+    @Column(name = "number_of_applicant")
+    private Integer numberOfApplicant;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
@@ -52,9 +65,6 @@ public class LanguageCampApplication extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "program_id")
     private Program program;
-
-    private LocalDate startDate;
-    private LocalDate endDate;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 16)
@@ -80,6 +90,24 @@ public class LanguageCampApplication extends BaseEntity {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "guardian_consent_file_id")
     private StoredFile guardianConsentFile; // 18 yaş altı için (top-level)
+
+    @Column(name = "is_under_18")
+    private Boolean under18;
+
+    @Column(name = "parent_full_name", length = 128)
+    private String parentFullName;
+
+    @Column(name = "parent_phone_number", length = 32)
+    private String parentPhoneNumber;
+
+    @Column(name = "parent_email_address", length = 256)
+    private String parentEmailAddress;
+
+    @Column(name = "parent_relationship", length = 64)
+    private String parentRelationship;
+
+    @Column(name = "user_notes", columnDefinition = "TEXT")
+    private String userNotes;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id")

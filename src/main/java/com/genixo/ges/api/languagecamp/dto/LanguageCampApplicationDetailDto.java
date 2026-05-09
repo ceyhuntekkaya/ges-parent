@@ -19,8 +19,6 @@ public class LanguageCampApplicationDetailDto {
     LanguageCampCategory category;
 
     UUID programId;
-    LocalDate startDate;
-    LocalDate endDate;
     AccommodationType accommodationType;
     Boolean visaNeeded;
     Boolean visaFollowByGes;
@@ -30,6 +28,20 @@ public class LanguageCampApplicationDetailDto {
 
     UUID companyId;
     CompanyDto company;
+
+    String firstName;
+    String lastName;
+    LocalDate birthDate;
+    String phone;
+    Boolean isItSelf;
+    Integer numberOfApplicant;
+
+    Boolean under18;
+    String parentFullName;
+    String parentPhoneNumber;
+    String parentEmailAddress;
+    String parentRelationship;
+    String userNotes;
 
     Instant createdAt;
     Instant updatedAt;

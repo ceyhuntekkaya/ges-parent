@@ -3,17 +3,13 @@ package com.genixo.ges.university.model;
 import com.genixo.ges.application.model.ApplicationStatus;
 import com.genixo.ges.applicant.model.ApplicantProfile;
 import com.genixo.ges.auth.model.UserAccount;
+import com.genixo.ges.common.jpa.Address;
 import com.genixo.ges.common.jpa.BaseEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -78,5 +74,7 @@ public class UniversityApplication extends BaseEntity {
     private String notes;
 
     private Instant preferencesCompletedAt;
+
+
 }
 

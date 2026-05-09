@@ -4,8 +4,6 @@ import com.genixo.ges.api.common.dto.PageDto;
 import com.genixo.ges.api.common.exception.ApiProblemException;
 import com.genixo.ges.api.company.dto.CompanyUpsertRequestDto;
 import com.genixo.ges.api.languagecamp.dto.CompanyDto;
-import com.genixo.ges.auth.model.UserAccount;
-import com.genixo.ges.auth.repo.UserAccountRepository;
 import com.genixo.ges.company.model.Company;
 import com.genixo.ges.company.repo.CompanyRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,18 +29,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class CompanyAdminController {
 
     private final CompanyRepository companies;
-    private final UserAccountRepository users;
 
-    public CompanyAdminController(CompanyRepository companies, UserAccountRepository users) {
+    public CompanyAdminController(CompanyRepository companies) {
         this.companies = companies;
-        this.users = users;
     }
 
     @GetMapping
     @Operation(operationId = "adminCompaniesList")
     public ResponseEntity<PageDto<CompanyDto>> list(
         @RequestParam(required = false) String q,
-        @RequestParam(required = false) UUID ownerUserId,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "50") int size
     ) {
@@ -51,10 +46,7 @@ public class CompanyAdminController {
             ? companies.findByNameContainingIgnoreCase(q, pageable)
             : companies.findAll(pageable);
 
-        var items = p.getContent().stream()
-            .filter(c -> ownerUserId == null || (c.getOwner() != null && ownerUserId.equals(c.getOwner().getId())))
-            .map(this::toDto)
-            .toList();
+        var items = p.getContent().stream().map(this::toDto).toList();
 
         return ResponseEntity.ok(PageDto.<CompanyDto>builder()
             .items(items)
@@ -76,14 +68,9 @@ public class CompanyAdminController {
     @Transactional
     @Operation(operationId = "adminCompaniesCreate")
     public ResponseEntity<CompanyDto> create(
-        @RequestParam UUID ownerUserId,
         @Valid @RequestBody CompanyUpsertRequestDto req
     ) {
-        UserAccount owner = users.findById(ownerUserId)
-            .orElseThrow(() -> new ApiProblemException(HttpStatus.BAD_REQUEST, "Invalid ownerUserId"));
-
         Company c = new Company();
-        c.setOwner(owner);
         apply(c, req);
         companies.save(c);
         return ResponseEntity.status(HttpStatus.CREATED).body(toDto(c));
@@ -109,6 +96,7 @@ public class CompanyAdminController {
     }
 
     private void apply(Company c, CompanyUpsertRequestDto req) {
+        c.setCode(req.getCode().trim());
         c.setName(req.getName().trim());
         c.setTaxNumber(req.getTaxNumber());
         c.setContactFullName(req.getContactFullName());
@@ -119,7 +107,7 @@ public class CompanyAdminController {
     private CompanyDto toDto(Company c) {
         return CompanyDto.builder()
             .id(c.getId())
-            .ownerUserId(c.getOwner() == null ? null : c.getOwner().getId())
+            .code(c.getCode())
             .name(c.getName())
             .taxNumber(c.getTaxNumber())
             .contactFullName(c.getContactFullName())

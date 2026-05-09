@@ -8,6 +8,10 @@ import lombok.Value;
 @Value
 public class CompanyUpsertRequestDto {
     @NotBlank
+    @Size(max = 64)
+    String code;
+
+    @NotBlank
     @Size(max = 255)
     String name;
 
