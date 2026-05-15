@@ -12,8 +12,13 @@ import com.genixo.ges.auth.model.UserStatus;
 import com.genixo.ges.auth.repo.UserAccountRepository;
 import com.genixo.ges.company.model.Company;
 import com.genixo.ges.company.repo.CompanyRepository;
+import com.genixo.ges.languagecamp.LanguageCampApplicationFeeSupport;
+import com.genixo.ges.languagecamp.model.EProjectStatus;
 import com.genixo.ges.languagecamp.model.LanguageCampApplication;
+import com.genixo.ges.languagecamp.model.LanguageCampProject;
 import com.genixo.ges.languagecamp.repo.LanguageCampApplicationRepository;
+import com.genixo.ges.languagecamp.repo.LanguageCampProjectRepository;
+import com.genixo.ges.languagecamp.service.LanguageCampVisaFormService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -34,21 +39,27 @@ public class LanguageCampApplicationPublicController {
     private final UserAccountRepository users;
     private final ApplicantProfileRepository profiles;
     private final LanguageCampApplicationRepository apps;
+    private final LanguageCampProjectRepository projects;
     private final CompanyRepository companies;
     private final PasswordEncoder passwordEncoder;
+    private final LanguageCampVisaFormService visaForms;
 
     public LanguageCampApplicationPublicController(
         UserAccountRepository users,
         ApplicantProfileRepository profiles,
         LanguageCampApplicationRepository apps,
+        LanguageCampProjectRepository projects,
         CompanyRepository companies,
-        PasswordEncoder passwordEncoder
+        PasswordEncoder passwordEncoder,
+        LanguageCampVisaFormService visaForms
     ) {
         this.users = users;
         this.profiles = profiles;
         this.apps = apps;
+        this.projects = projects;
         this.companies = companies;
         this.passwordEncoder = passwordEncoder;
+        this.visaForms = visaForms;
     }
 
     @PostMapping("/complete")
@@ -86,8 +97,14 @@ public class LanguageCampApplicationPublicController {
         profiles.save(ap);
 
         // 3) Create application and mark as submitted (single-step completion)
+        LanguageCampProject project = projects
+            .findByIdAndProjectStatus(req.getApplication().getLanguageCampProjectId(), EProjectStatus.ACTIVE)
+            .orElseThrow(() -> new ApiProblemException(HttpStatus.BAD_REQUEST, "Invalid languageCampProjectId"));
+
         LanguageCampApplication a = new LanguageCampApplication();
         a.setApplicant(ua);
+        a.setLanguageCampProject(project);
+        LanguageCampApplicationFeeSupport.applyFromProject(a, project);
         a.setFirstName(req.getApplicantProfile().getFirstName());
         a.setLastName(req.getApplicantProfile().getLastName());
         a.setBirthDate(req.getApplicantProfile().getBirthDate());
@@ -120,6 +137,7 @@ public class LanguageCampApplicationPublicController {
         }
 
         apps.save(a);
+        visaForms.createForApplication(a);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(
             PublicLanguageCampApplicationCompleteResponseDto.builder()

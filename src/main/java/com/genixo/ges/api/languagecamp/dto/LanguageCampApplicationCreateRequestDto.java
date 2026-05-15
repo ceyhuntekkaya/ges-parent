@@ -3,10 +3,14 @@ package com.genixo.ges.api.languagecamp.dto;
 import com.genixo.ges.languagecamp.model.LanguageCampCategory;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
+import java.util.UUID;
 import lombok.Value;
 
 @Value
 public class LanguageCampApplicationCreateRequestDto {
+    @NotNull
+    UUID languageCampProjectId;
+
     @NotNull
     LanguageCampCategory category;
 

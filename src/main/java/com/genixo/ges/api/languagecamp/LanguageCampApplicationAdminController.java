@@ -2,20 +2,30 @@ package com.genixo.ges.api.languagecamp;
 
 import com.genixo.ges.api.common.dto.PageDto;
 import com.genixo.ges.api.common.exception.ApiProblemException;
+import com.genixo.ges.api.languagecamp.dto.LanguageCampApplicationDetailDto;
+import com.genixo.ges.api.languagecamp.dto.LanguageCampApplicationListItemDto;
+import com.genixo.ges.api.languagecamp.dto.LanguageCampApplicationPaymentUpsertRequestDto;
+import com.genixo.ges.api.languagecamp.dto.LanguageCampPaymentCompletedRequestDto;
 import com.genixo.ges.api.university.dto.ApplicationStatusChangeRequestDto;
 import com.genixo.ges.application.model.ApplicationStatus;
 import com.genixo.ges.languagecamp.model.LanguageCampApplication;
+import com.genixo.ges.languagecamp.model.LanguageCampApplicationPayment;
 import com.genixo.ges.languagecamp.repo.LanguageCampApplicationRepository;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -33,29 +43,21 @@ public class LanguageCampApplicationAdminController {
 
     @GetMapping
     @Operation(operationId = "adminLanguageCampApplicationsList")
-    public ResponseEntity<PageDto<com.genixo.ges.api.languagecamp.dto.LanguageCampApplicationListItemDto>> list(
+    public ResponseEntity<PageDto<LanguageCampApplicationListItemDto>> list(
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size,
-        @RequestParam(required = false) ApplicationStatus status
+        @RequestParam(required = false) ApplicationStatus status,
+        @RequestParam(required = false) Boolean paymentCompleted
     ) {
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         var p = apps.findAll(pageable);
         var items = p.getContent().stream()
             .filter(a -> status == null || a.getStatus() == status)
-            .map(a -> {
-                return com.genixo.ges.api.languagecamp.dto.LanguageCampApplicationListItemDto.builder()
-                    .id(a.getId())
-                    .firstName(a.getFirstName())
-                    .lastName(a.getLastName())
-                    .status(a.getStatus())
-                    .category(a.getCategory())
-                    .createdAt(a.getCreatedAt())
-                    .updatedAt(a.getUpdatedAt())
-                    .build();
-            })
+            .filter(a -> paymentCompleted == null || a.isPaymentCompleted() == paymentCompleted)
+            .map(LanguageCampApplicationDtoMapper::toListItemDto)
             .toList();
 
-        return ResponseEntity.ok(PageDto.<com.genixo.ges.api.languagecamp.dto.LanguageCampApplicationListItemDto>builder()
+        return ResponseEntity.ok(PageDto.<LanguageCampApplicationListItemDto>builder()
             .items(items)
             .page(p.getNumber())
             .size(p.getSize())
@@ -66,61 +68,124 @@ public class LanguageCampApplicationAdminController {
 
     @GetMapping("/{id}")
     @Operation(operationId = "adminLanguageCampApplicationsGet")
-    public ResponseEntity<com.genixo.ges.api.languagecamp.dto.LanguageCampApplicationDetailDto> get(@PathVariable UUID id) {
-        LanguageCampApplication a = apps.findById(id)
+    public ResponseEntity<LanguageCampApplicationDetailDto> get(@PathVariable UUID id) {
+        LanguageCampApplication a = apps.findDetailById(id)
             .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Application not found"));
-        return ResponseEntity.ok(com.genixo.ges.api.languagecamp.dto.LanguageCampApplicationDetailDto.builder()
-            .id(a.getId())
-            .status(a.getStatus())
-            .category(a.getCategory())
-            .programId(a.getProgram() == null ? null : a.getProgram().getId())
-            .accommodationType(a.getAccommodationType())
-            .visaNeeded(a.getVisaNeeded())
-            .visaFollowByGes(a.getVisaFollowByGes())
-            .emergencyContact(a.getEmergencyContact())
-            .paymentPreference(a.getPaymentPreference())
-            .kvkkAcceptedAt(a.getKvkkAcceptedAt())
-            .companyId(a.getCompany() == null ? null : a.getCompany().getId())
-            .company(a.getCompany() == null ? null : com.genixo.ges.api.languagecamp.dto.CompanyDto.builder()
-                .id(a.getCompany().getId())
-                .code(a.getCompany().getCode())
-                .name(a.getCompany().getName())
-                .taxNumber(a.getCompany().getTaxNumber())
-                .contactFullName(a.getCompany().getContactFullName())
-                .contactPhone(a.getCompany().getContactPhone())
-                .contactEmail(a.getCompany().getContactEmail())
-                .createdAt(a.getCompany().getCreatedAt())
-                .updatedAt(a.getCompany().getUpdatedAt())
-                .build())
-            .firstName(a.getFirstName())
-            .lastName(a.getLastName())
-            .birthDate(a.getBirthDate())
-            .phone(a.getPhone())
-            .isItSelf(a.getIsItSelf())
-            .numberOfApplicant(a.getNumberOfApplicant())
-            .under18(a.getUnder18())
-            .parentFullName(a.getParentFullName())
-            .parentPhoneNumber(a.getParentPhoneNumber())
-            .parentEmailAddress(a.getParentEmailAddress())
-            .parentRelationship(a.getParentRelationship())
-            .userNotes(a.getUserNotes())
-            .createdAt(a.getCreatedAt())
-            .updatedAt(a.getUpdatedAt())
-            .build());
+        return ResponseEntity.ok(LanguageCampApplicationDtoMapper.toDetailDto(a));
     }
 
     @PatchMapping("/{id}/status")
     @Transactional
     @Operation(operationId = "adminLanguageCampApplicationsChangeStatus")
-    public ResponseEntity<com.genixo.ges.api.languagecamp.dto.LanguageCampApplicationDetailDto> changeStatus(
+    public ResponseEntity<LanguageCampApplicationDetailDto> changeStatus(
         @PathVariable UUID id,
         @RequestBody ApplicationStatusChangeRequestDto req
     ) {
-        LanguageCampApplication a = apps.findById(id)
-            .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Application not found"));
+        LanguageCampApplication a = getAny(id);
         a.setStatus(req.getStatus());
         apps.save(a);
         return get(id);
     }
-}
 
+    @PatchMapping("/{id}/payment-completed")
+    @Transactional
+    @Operation(operationId = "adminLanguageCampApplicationsSetPaymentCompleted")
+    public ResponseEntity<LanguageCampApplicationDetailDto> setPaymentCompleted(
+        @PathVariable UUID id,
+        @Valid @RequestBody LanguageCampPaymentCompletedRequestDto req
+    ) {
+        LanguageCampApplication a = getAny(id);
+        a.setPaymentCompleted(req.getPaymentCompleted());
+        apps.save(a);
+        return get(id);
+    }
+
+    @PostMapping("/{id}/payments")
+    @Transactional
+    @Operation(operationId = "adminLanguageCampApplicationsPaymentsAdd")
+    public ResponseEntity<LanguageCampApplicationDetailDto> addPayment(
+        @PathVariable UUID id,
+        @Valid @RequestBody LanguageCampApplicationPaymentUpsertRequestDto req
+    ) {
+        LanguageCampApplication a = getAny(id);
+        LanguageCampApplicationPayment p = new LanguageCampApplicationPayment();
+        p.setApplication(a);
+        p.setPaymentAt(req.getPaymentAt());
+        p.setAmount(req.getAmount());
+        p.setCurrency(req.getCurrency());
+        p.setReceivedBy(req.getReceivedBy());
+
+        List<LanguageCampApplicationPayment> list = a.getPayments();
+        if (list == null) {
+            list = new ArrayList<>();
+        }
+        list.add(p);
+        a.setPayments(list);
+        apps.save(a);
+        return get(id);
+    }
+
+    @PatchMapping("/{id}/payments/{paymentId}")
+    @Transactional
+    @Operation(operationId = "adminLanguageCampApplicationsPaymentsUpdate")
+    public ResponseEntity<LanguageCampApplicationDetailDto> updatePayment(
+        @PathVariable UUID id,
+        @PathVariable UUID paymentId,
+        @Valid @RequestBody LanguageCampApplicationPaymentUpsertRequestDto req
+    ) {
+        LanguageCampApplication a = getAny(id);
+        LanguageCampApplicationPayment p = findByIdOrThrow(a.getPayments(), paymentId, "Payment not found");
+        p.setPaymentAt(req.getPaymentAt());
+        p.setAmount(req.getAmount());
+        p.setCurrency(req.getCurrency());
+        p.setReceivedBy(req.getReceivedBy());
+        apps.save(a);
+        return get(id);
+    }
+
+    @DeleteMapping("/{id}/payments/{paymentId}")
+    @Transactional
+    @Operation(operationId = "adminLanguageCampApplicationsPaymentsDelete")
+    public ResponseEntity<LanguageCampApplicationDetailDto> deletePayment(
+        @PathVariable UUID id,
+        @PathVariable UUID paymentId
+    ) {
+        LanguageCampApplication a = getAny(id);
+        removeByIdOrThrow(a.getPayments(), paymentId, "Payment not found");
+        apps.save(a);
+        return get(id);
+    }
+
+    private LanguageCampApplication getAny(UUID id) {
+        return apps.findById(id)
+            .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Application not found"));
+    }
+
+    private static <T extends com.genixo.ges.common.jpa.BaseEntity> T findByIdOrThrow(
+        List<T> list,
+        UUID id,
+        String notFoundMessage
+    ) {
+        if (list == null || list.isEmpty()) {
+            throw new ApiProblemException(HttpStatus.NOT_FOUND, notFoundMessage);
+        }
+        return list.stream()
+            .filter(x -> x.getId() != null && x.getId().equals(id))
+            .findFirst()
+            .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, notFoundMessage));
+    }
+
+    private static <T extends com.genixo.ges.common.jpa.BaseEntity> void removeByIdOrThrow(
+        List<T> list,
+        UUID id,
+        String notFoundMessage
+    ) {
+        if (list == null || list.isEmpty()) {
+            throw new ApiProblemException(HttpStatus.NOT_FOUND, notFoundMessage);
+        }
+        boolean removed = list.removeIf(x -> x.getId() != null && x.getId().equals(id));
+        if (!removed) {
+            throw new ApiProblemException(HttpStatus.NOT_FOUND, notFoundMessage);
+        }
+    }
+}

@@ -5,8 +5,10 @@ import com.genixo.ges.languagecamp.model.AccommodationType;
 import com.genixo.ges.languagecamp.model.EmergencyContact;
 import com.genixo.ges.languagecamp.model.LanguageCampCategory;
 import com.genixo.ges.languagecamp.model.PaymentPreference;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Value;
@@ -18,12 +20,17 @@ public class LanguageCampApplicationDetailDto {
     ApplicationStatus status;
     LanguageCampCategory category;
 
-    UUID programId;
+    UUID languageCampProjectId;
+    String languageCampProjectTitle;
     AccommodationType accommodationType;
     Boolean visaNeeded;
     Boolean visaFollowByGes;
     EmergencyContact emergencyContact;
     PaymentPreference paymentPreference;
+    boolean paymentCompleted;
+    List<LanguageCampApplicationPaymentDto> payments;
+    BigDecimal priceAmount;
+    String priceCurrency;
     Instant kvkkAcceptedAt;
 
     UUID companyId;
@@ -42,6 +49,8 @@ public class LanguageCampApplicationDetailDto {
     String parentEmailAddress;
     String parentRelationship;
     String userNotes;
+
+    LanguageCampVisaFormDto visaForm;
 
     Instant createdAt;
     Instant updatedAt;

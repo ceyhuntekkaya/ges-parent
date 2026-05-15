@@ -2,17 +2,22 @@ package com.genixo.ges.api.languagecamp;
 
 import com.genixo.ges.api.common.dto.PageDto;
 import com.genixo.ges.api.common.exception.ApiProblemException;
+import com.genixo.ges.api.languagecamp.dto.LanguageCampVisaFormDocumentAttachRequestDto;
 import com.genixo.ges.api.languagecamp.dto.LanguageCampVisaFormDto;
 import com.genixo.ges.api.languagecamp.dto.LanguageCampVisaFormUpsertRequestDto;
-import com.genixo.ges.languagecamp.model.LanguageCampParticipant;
 import com.genixo.ges.languagecamp.model.LanguageCampVisaForm;
-import com.genixo.ges.languagecamp.repo.LanguageCampParticipantRepository;
+import com.genixo.ges.languagecamp.model.LanguageCampVisaFormDocument;
+import com.genixo.ges.languagecamp.repo.LanguageCampApplicationRepository;
+import com.genixo.ges.languagecamp.repo.LanguageCampVisaFormDocumentRepository;
 import com.genixo.ges.languagecamp.repo.LanguageCampVisaFormRepository;
+import com.genixo.ges.languagecamp.service.LanguageCampVisaFormService;
 import com.genixo.ges.security.AuthUserPrincipal;
 import com.genixo.ges.storage.model.StoredFile;
 import com.genixo.ges.storage.repo.StoredFileRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -20,6 +25,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,42 +40,39 @@ import org.springframework.web.bind.annotation.RestController;
 public class LanguageCampVisaFormPortalController {
 
     private final LanguageCampVisaFormRepository forms;
-    private final LanguageCampParticipantRepository participants;
+    private final LanguageCampVisaFormDocumentRepository formDocuments;
+    private final LanguageCampApplicationRepository applications;
     private final StoredFileRepository storedFiles;
+    private final LanguageCampVisaFormService visaFormService;
 
     public LanguageCampVisaFormPortalController(
         LanguageCampVisaFormRepository forms,
-        LanguageCampParticipantRepository participants,
-        StoredFileRepository storedFiles
+        LanguageCampVisaFormDocumentRepository formDocuments,
+        LanguageCampApplicationRepository applications,
+        StoredFileRepository storedFiles,
+        LanguageCampVisaFormService visaFormService
     ) {
         this.forms = forms;
-        this.participants = participants;
+        this.formDocuments = formDocuments;
+        this.applications = applications;
         this.storedFiles = storedFiles;
+        this.visaFormService = visaFormService;
     }
 
-    @PostMapping
+    @PostMapping("/ensure")
     @Transactional
-    @Operation(operationId = "portalLanguageCampVisaFormsCreate")
-    public ResponseEntity<LanguageCampVisaFormDto> create(
+    @Operation(operationId = "portalLanguageCampVisaFormsEnsure")
+    public ResponseEntity<LanguageCampVisaFormDto> ensure(
         @AuthenticationPrincipal AuthUserPrincipal principal,
-        @Valid @RequestBody LanguageCampVisaFormUpsertRequestDto req
+        @RequestParam UUID applicationId
     ) {
-        if (req.getParticipantId() == null) {
-            throw new ApiProblemException(HttpStatus.BAD_REQUEST, "participantId is required");
-        }
+        var app = applications.findByIdAndApplicant_Id(applicationId, principal.getId())
+            .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Application not found"));
 
-        LanguageCampParticipant p = participants.findByIdAndApplication_Applicant_Id(req.getParticipantId(), principal.getId())
-            .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Participant not found"));
-
-        forms.findByParticipant_Id(p.getId()).ifPresent(x -> {
-            throw new ApiProblemException(HttpStatus.CONFLICT, "Visa form already exists for participant");
-        });
-
-        LanguageCampVisaForm f = new LanguageCampVisaForm();
-        f.setParticipant(p);
-        apply(f, req, principal.getId());
-        forms.save(f);
-        return ResponseEntity.status(HttpStatus.CREATED).body(toDto(f));
+        LanguageCampVisaForm f = visaFormService.ensureForApplication(app);
+        return ResponseEntity.ok(LanguageCampVisaFormDtoMapper.toDto(
+            forms.findByApplicationIdWithDocuments(applicationId).orElse(f)
+        ));
     }
 
     @GetMapping
@@ -80,16 +83,14 @@ public class LanguageCampVisaFormPortalController {
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "50") int size
     ) {
-        // ownership: participant.application.applicant must be current user -> enforced by filtering participants not easily in query
-        // We'll rely on participant repository check per item by joining application in entity graph at runtime (LAZY); keep simple now.
+        applications.findByIdAndApplicant_Id(applicationId, principal.getId())
+            .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Application not found"));
+
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        var p = forms.findAllByParticipant_Application_Id(applicationId, pageable);
+        var p = forms.findAllByApplication_Id(applicationId, pageable);
         var items = p.getContent().stream()
-            .filter(x -> x.getParticipant() != null
-                && x.getParticipant().getApplication() != null
-                && x.getParticipant().getApplication().getApplicant() != null
-                && principal.getId().equals(x.getParticipant().getApplication().getApplicant().getId()))
-            .map(this::toDto)
+            .map(f -> forms.findByIdWithDocuments(f.getId()).orElse(f))
+            .map(LanguageCampVisaFormDtoMapper::toDto)
             .toList();
 
         return ResponseEntity.ok(PageDto.<LanguageCampVisaFormDto>builder()
@@ -107,17 +108,11 @@ public class LanguageCampVisaFormPortalController {
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @PathVariable UUID id
     ) {
-        LanguageCampVisaForm f = forms.findById(id)
+        LanguageCampVisaForm f = forms.findByIdWithDocuments(id)
             .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Visa form not found"));
 
-        if (f.getParticipant() == null
-            || f.getParticipant().getApplication() == null
-            || f.getParticipant().getApplication().getApplicant() == null
-            || !principal.getId().equals(f.getParticipant().getApplication().getApplicant().getId())) {
-            throw new ApiProblemException(HttpStatus.FORBIDDEN, "Forbidden");
-        }
-
-        return ResponseEntity.ok(toDto(f));
+        assertOwner(f, principal.getId());
+        return ResponseEntity.ok(LanguageCampVisaFormDtoMapper.toDto(f));
     }
 
     @PatchMapping("/{id}")
@@ -131,63 +126,103 @@ public class LanguageCampVisaFormPortalController {
         LanguageCampVisaForm f = forms.findById(id)
             .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Visa form not found"));
 
-        if (f.getParticipant() == null
-            || f.getParticipant().getApplication() == null
-            || f.getParticipant().getApplication().getApplicant() == null
-            || !principal.getId().equals(f.getParticipant().getApplication().getApplicant().getId())) {
+        assertOwner(f, principal.getId());
+        apply(f, req);
+        forms.save(f);
+        return ResponseEntity.ok(LanguageCampVisaFormDtoMapper.toDto(
+            forms.findByIdWithDocuments(f.getId()).orElse(f)
+        ));
+    }
+
+    @PostMapping("/{id}/documents")
+    @Transactional
+    @Operation(operationId = "portalLanguageCampVisaFormsDocumentsAdd")
+    public ResponseEntity<LanguageCampVisaFormDto> addDocument(
+        @AuthenticationPrincipal AuthUserPrincipal principal,
+        @PathVariable UUID id,
+        @Valid @RequestBody LanguageCampVisaFormDocumentAttachRequestDto req
+    ) {
+        LanguageCampVisaForm f = forms.findById(id)
+            .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Visa form not found"));
+
+        assertOwner(f, principal.getId());
+
+        StoredFile sf = storedFiles.findById(req.getFileId())
+            .orElseThrow(() -> new ApiProblemException(HttpStatus.BAD_REQUEST, "Invalid fileId"));
+        if (sf.getUploadedBy() == null || !principal.getId().equals(sf.getUploadedBy().getId())) {
             throw new ApiProblemException(HttpStatus.FORBIDDEN, "Forbidden");
         }
 
-        apply(f, req, principal.getId());
+        boolean alreadyAttached = f.getDocuments() != null && f.getDocuments().stream()
+            .anyMatch(d -> d.getStoredFile() != null && req.getFileId().equals(d.getStoredFile().getId()));
+        if (alreadyAttached) {
+            throw new ApiProblemException(HttpStatus.CONFLICT, "File already attached");
+        }
+
+        LanguageCampVisaFormDocument doc = new LanguageCampVisaFormDocument();
+        doc.setVisaForm(f);
+        doc.setStoredFile(sf);
+
+        List<LanguageCampVisaFormDocument> list = f.getDocuments();
+        if (list == null) {
+            list = new ArrayList<>();
+            f.setDocuments(list);
+        }
+        list.add(doc);
         forms.save(f);
-        return ResponseEntity.ok(toDto(f));
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(LanguageCampVisaFormDtoMapper.toDto(
+            forms.findByIdWithDocuments(f.getId()).orElse(f)
+        ));
     }
 
-    private void apply(LanguageCampVisaForm f, LanguageCampVisaFormUpsertRequestDto req, UUID currentUserId) {
-        if (req.getBirthPlace() != null) f.setBirthPlace(req.getBirthPlace());
-        if (req.getBirthCountry() != null) f.setBirthCountry(req.getBirthCountry());
-        if (req.getResidenceAddress() != null) f.setResidenceAddress(req.getResidenceAddress());
-        if (req.getVisaRejectedBefore() != null) f.setVisaRejectedBefore(req.getVisaRejectedBefore());
-        if (req.getVisaRejectionDetails() != null) f.setVisaRejectionDetails(req.getVisaRejectionDetails());
-        if (req.getVisitedCountries() != null) f.setVisitedCountries(req.getVisitedCountries());
-        if (req.getAppointmentCityPreference() != null) f.setAppointmentCityPreference(req.getAppointmentCityPreference());
+    @DeleteMapping("/{id}/documents/{documentId}")
+    @Transactional
+    @Operation(operationId = "portalLanguageCampVisaFormsDocumentsDelete")
+    public ResponseEntity<LanguageCampVisaFormDto> deleteDocument(
+        @AuthenticationPrincipal AuthUserPrincipal principal,
+        @PathVariable UUID id,
+        @PathVariable UUID documentId
+    ) {
+        LanguageCampVisaForm f = forms.findById(id)
+            .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Visa form not found"));
 
-        if (req.getBankStatementFileId() != null) {
-            StoredFile sf = storedFiles.findById(req.getBankStatementFileId())
-                .orElseThrow(() -> new ApiProblemException(HttpStatus.BAD_REQUEST, "Invalid bankStatementFileId"));
-            if (sf.getUploadedBy() == null || !currentUserId.equals(sf.getUploadedBy().getId())) {
-                throw new ApiProblemException(HttpStatus.FORBIDDEN, "Forbidden");
-            }
-            f.setBankStatementFile(sf);
+        assertOwner(f, principal.getId());
+
+        LanguageCampVisaFormDocument doc = formDocuments.findByIdAndVisaForm_Id(documentId, id)
+            .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Document not found"));
+
+        if (f.getDocuments() != null) {
+            f.getDocuments().removeIf(d -> d.getId().equals(doc.getId()));
         }
+        forms.save(f);
 
-        if (req.getBiometricPhotoFileId() != null) {
-            StoredFile sf = storedFiles.findById(req.getBiometricPhotoFileId())
-                .orElseThrow(() -> new ApiProblemException(HttpStatus.BAD_REQUEST, "Invalid biometricPhotoFileId"));
-            if (sf.getUploadedBy() == null || !currentUserId.equals(sf.getUploadedBy().getId())) {
-                throw new ApiProblemException(HttpStatus.FORBIDDEN, "Forbidden");
-            }
-            f.setBiometricPhotoFile(sf);
+        return ResponseEntity.ok(LanguageCampVisaFormDtoMapper.toDto(
+            forms.findByIdWithDocuments(f.getId()).orElse(f)
+        ));
+    }
+
+    private void assertOwner(LanguageCampVisaForm f, UUID currentUserId) {
+        if (f.getApplication() == null
+            || f.getApplication().getApplicant() == null
+            || !currentUserId.equals(f.getApplication().getApplicant().getId())) {
+            throw new ApiProblemException(HttpStatus.FORBIDDEN, "Forbidden");
         }
     }
 
-    private LanguageCampVisaFormDto toDto(LanguageCampVisaForm f) {
-        return LanguageCampVisaFormDto.builder()
-            .id(f.getId())
-            .participantId(f.getParticipant() == null ? null : f.getParticipant().getId())
-            .applicationId(f.getParticipant() == null || f.getParticipant().getApplication() == null ? null : f.getParticipant().getApplication().getId())
-            .birthPlace(f.getBirthPlace())
-            .birthCountry(f.getBirthCountry())
-            .residenceAddress(f.getResidenceAddress())
-            .visaRejectedBefore(f.getVisaRejectedBefore())
-            .visaRejectionDetails(f.getVisaRejectionDetails())
-            .visitedCountries(f.getVisitedCountries())
-            .bankStatementFileId(f.getBankStatementFile() == null ? null : f.getBankStatementFile().getId())
-            .biometricPhotoFileId(f.getBiometricPhotoFile() == null ? null : f.getBiometricPhotoFile().getId())
-            .appointmentCityPreference(f.getAppointmentCityPreference())
-            .createdAt(f.getCreatedAt())
-            .updatedAt(f.getUpdatedAt())
-            .build();
+    private void apply(LanguageCampVisaForm f, LanguageCampVisaFormUpsertRequestDto req) {
+        f.setPassportNumber(trimToNull(req.getPassportNumber()));
+        f.setPassportValidUntil(req.getPassportValidUntil());
+        f.setPassportType(req.getPassportType());
+        f.setVisaValidFrom(req.getVisaValidFrom());
+        f.setVisaValidUntil(req.getVisaValidUntil());
+        f.setVisaIssuingCountry(trimToNull(req.getVisaIssuingCountry()));
+        f.setVisaType(trimToNull(req.getVisaType()));
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }
-

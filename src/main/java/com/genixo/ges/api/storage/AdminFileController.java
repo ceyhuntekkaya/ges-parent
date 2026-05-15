@@ -2,6 +2,10 @@ package com.genixo.ges.api.storage;
 
 import com.genixo.ges.api.common.dto.PageDto;
 import com.genixo.ges.api.common.exception.ApiProblemException;
+import com.genixo.ges.api.storage.dto.StoredFileDto;
+import com.genixo.ges.auth.model.UserAccount;
+import com.genixo.ges.auth.repo.UserAccountRepository;
+import com.genixo.ges.security.AuthUserPrincipal;
 import com.genixo.ges.storage.FileStorageService;
 import com.genixo.ges.storage.model.StoredFile;
 import com.genixo.ges.storage.model.StoredFilePurpose;
@@ -18,11 +22,14 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/v1/admin/files")
@@ -30,10 +37,26 @@ public class AdminFileController {
 
     private final FileStorageService storage;
     private final StoredFileRepository storedFiles;
+    private final UserAccountRepository users;
 
-    public AdminFileController(FileStorageService storage, StoredFileRepository storedFiles) {
+    public AdminFileController(FileStorageService storage, StoredFileRepository storedFiles, UserAccountRepository users) {
         this.storage = storage;
         this.storedFiles = storedFiles;
+        this.users = users;
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(operationId = "adminFilesUpload")
+    public ResponseEntity<StoredFileDto> upload(
+        @AuthenticationPrincipal AuthUserPrincipal principal,
+        @RequestParam("file") MultipartFile file,
+        @RequestParam(name = "purpose", defaultValue = "OTHER") StoredFilePurpose purpose
+    ) {
+        UserAccount uploader = users.findById(principal.getId())
+            .orElseThrow(() -> new ApiProblemException(HttpStatus.UNAUTHORIZED, "User not found"));
+
+        StoredFile sf = storage.store(file, purpose, uploader);
+        return ResponseEntity.status(HttpStatus.CREATED).body(toUploadDto(sf));
     }
 
     @GetMapping
@@ -84,8 +107,12 @@ public class AdminFileController {
             .body(res);
     }
 
-    private com.genixo.ges.api.storage.dto.StoredFileDto toDto(StoredFile sf) {
-        return com.genixo.ges.api.storage.dto.StoredFileDto.builder()
+    private StoredFileDto toDto(StoredFile sf) {
+        return toUploadDto(sf);
+    }
+
+    private StoredFileDto toUploadDto(StoredFile sf) {
+        return StoredFileDto.builder()
             .id(sf.getId())
             .purpose(sf.getPurpose())
             .originalFilename(sf.getOriginalFilename())

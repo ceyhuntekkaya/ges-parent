@@ -13,7 +13,7 @@ import lombok.Value;
 @Builder
 public class LanguageCampApplicationUpdateRequestDto {
     LanguageCampCategory category;
-    UUID programId;
+    UUID languageCampProjectId;
     AccommodationType accommodationType;
     Boolean visaNeeded;
     Boolean visaFollowByGes;

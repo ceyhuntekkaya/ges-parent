@@ -11,8 +11,12 @@ import com.genixo.ges.auth.model.UserAccount;
 import com.genixo.ges.auth.repo.UserAccountRepository;
 import com.genixo.ges.company.model.Company;
 import com.genixo.ges.company.repo.CompanyRepository;
+import com.genixo.ges.languagecamp.LanguageCampApplicationFeeSupport;
 import com.genixo.ges.languagecamp.model.LanguageCampApplication;
+import com.genixo.ges.languagecamp.model.LanguageCampProject;
 import com.genixo.ges.languagecamp.repo.LanguageCampApplicationRepository;
+import com.genixo.ges.languagecamp.repo.LanguageCampProjectRepository;
+import com.genixo.ges.languagecamp.service.LanguageCampVisaFormService;
 import com.genixo.ges.security.AuthUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -37,17 +41,23 @@ import org.springframework.web.bind.annotation.RestController;
 public class LanguageCampApplicationPortalController {
 
     private final LanguageCampApplicationRepository apps;
+    private final LanguageCampProjectRepository projects;
     private final UserAccountRepository users;
     private final CompanyRepository companies;
+    private final LanguageCampVisaFormService visaForms;
 
     public LanguageCampApplicationPortalController(
         LanguageCampApplicationRepository apps,
+        LanguageCampProjectRepository projects,
         UserAccountRepository users,
-        CompanyRepository companies
+        CompanyRepository companies,
+        LanguageCampVisaFormService visaForms
     ) {
         this.apps = apps;
+        this.projects = projects;
         this.users = users;
         this.companies = companies;
+        this.visaForms = visaForms;
     }
 
     @PostMapping
@@ -60,8 +70,13 @@ public class LanguageCampApplicationPortalController {
         UserAccount applicant = users.findById(principal.getId())
             .orElseThrow(() -> new ApiProblemException(HttpStatus.UNAUTHORIZED, "User not found"));
 
+        LanguageCampProject project = projects.findById(req.getLanguageCampProjectId())
+            .orElseThrow(() -> new ApiProblemException(HttpStatus.BAD_REQUEST, "Invalid languageCampProjectId"));
+
         LanguageCampApplication a = new LanguageCampApplication();
         a.setApplicant(applicant);
+        a.setLanguageCampProject(project);
+        LanguageCampApplicationFeeSupport.applyFromProject(a, project);
         a.setCategory(req.getCategory());
         a.setStatus(ApplicationStatus.DRAFT);
         a.setFirstName(req.getFirstName());
@@ -77,8 +92,11 @@ public class LanguageCampApplicationPortalController {
         a.setParentRelationship(req.getParentRelationship());
         a.setUserNotes(req.getUserNotes());
         apps.save(a);
+        a.setVisaForm(visaForms.createForApplication(a));
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(toDetailDto(a));
+        return ResponseEntity.status(HttpStatus.CREATED).body(LanguageCampApplicationDtoMapper.toDetailDto(
+            apps.findDetailByIdAndApplicant_Id(a.getId(), principal.getId()).orElse(a)
+        ));
     }
 
     @GetMapping
@@ -90,10 +108,8 @@ public class LanguageCampApplicationPortalController {
     ) {
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         var p = apps.findByApplicant_Id(principal.getId(), pageable);
-        var items = p.getContent().stream().map(this::toListItemDto).toList();
-
         return ResponseEntity.ok(PageDto.<LanguageCampApplicationListItemDto>builder()
-            .items(items)
+            .items(p.getContent().stream().map(LanguageCampApplicationDtoMapper::toListItemDto).toList())
             .page(p.getNumber())
             .size(p.getSize())
             .totalItems(p.getTotalElements())
@@ -107,9 +123,9 @@ public class LanguageCampApplicationPortalController {
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @PathVariable UUID id
     ) {
-        LanguageCampApplication a = apps.findByIdAndApplicant_Id(id, principal.getId())
+        LanguageCampApplication a = apps.findDetailByIdAndApplicant_Id(id, principal.getId())
             .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Application not found"));
-        return ResponseEntity.ok(toDetailDto(a));
+        return ResponseEntity.ok(LanguageCampApplicationDtoMapper.toDetailDto(a));
     }
 
     @PatchMapping("/{id}")
@@ -128,7 +144,12 @@ public class LanguageCampApplicationPortalController {
         }
 
         if (req.getCategory() != null) a.setCategory(req.getCategory());
-        // programId mapping will be added once ProgramRepository exists; keep ID in DTO for now
+        if (req.getLanguageCampProjectId() != null) {
+            LanguageCampProject project = projects.findById(req.getLanguageCampProjectId())
+                .orElseThrow(() -> new ApiProblemException(HttpStatus.BAD_REQUEST, "Invalid languageCampProjectId"));
+            a.setLanguageCampProject(project);
+            LanguageCampApplicationFeeSupport.applyFromProject(a, project);
+        }
         if (req.getAccommodationType() != null) a.setAccommodationType(req.getAccommodationType());
         if (req.getVisaNeeded() != null) a.setVisaNeeded(req.getVisaNeeded());
         if (req.getVisaFollowByGes() != null) a.setVisaFollowByGes(req.getVisaFollowByGes());
@@ -154,7 +175,9 @@ public class LanguageCampApplicationPortalController {
         }
 
         apps.save(a);
-        return ResponseEntity.ok(toDetailDto(a));
+        return ResponseEntity.ok(LanguageCampApplicationDtoMapper.toDetailDto(
+            apps.findDetailByIdAndApplicant_Id(a.getId(), principal.getId()).orElse(a)
+        ));
     }
 
     @PostMapping("/{id}/submit")
@@ -170,63 +193,15 @@ public class LanguageCampApplicationPortalController {
         if (a.getStatus() != ApplicationStatus.DRAFT) {
             throw new ApiProblemException(HttpStatus.CONFLICT, "Only DRAFT applications can be submitted");
         }
+        if (a.getLanguageCampProject() == null) {
+            throw new ApiProblemException(HttpStatus.BAD_REQUEST, "languageCampProjectId is required");
+        }
 
         a.setStatus(ApplicationStatus.SUBMITTED);
         apps.save(a);
-        return ResponseEntity.ok(toDetailDto(a));
-    }
-
-    private LanguageCampApplicationListItemDto toListItemDto(LanguageCampApplication a) {
-        return LanguageCampApplicationListItemDto.builder()
-            .id(a.getId())
-            .firstName(a.getFirstName())
-            .lastName(a.getLastName())
-            .status(a.getStatus())
-            .category(a.getCategory())
-            .createdAt(a.getCreatedAt())
-            .updatedAt(a.getUpdatedAt())
-            .build();
-    }
-
-    private LanguageCampApplicationDetailDto toDetailDto(LanguageCampApplication a) {
-        return LanguageCampApplicationDetailDto.builder()
-            .id(a.getId())
-            .status(a.getStatus())
-            .category(a.getCategory())
-            .programId(a.getProgram() == null ? null : a.getProgram().getId())
-            .accommodationType(a.getAccommodationType())
-            .visaNeeded(a.getVisaNeeded())
-            .visaFollowByGes(a.getVisaFollowByGes())
-            .emergencyContact(a.getEmergencyContact())
-            .paymentPreference(a.getPaymentPreference())
-            .kvkkAcceptedAt(a.getKvkkAcceptedAt())
-            .companyId(a.getCompany() == null ? null : a.getCompany().getId())
-            .company(a.getCompany() == null ? null : com.genixo.ges.api.languagecamp.dto.CompanyDto.builder()
-                .id(a.getCompany().getId())
-                .code(a.getCompany().getCode())
-                .name(a.getCompany().getName())
-                .taxNumber(a.getCompany().getTaxNumber())
-                .contactFullName(a.getCompany().getContactFullName())
-                .contactPhone(a.getCompany().getContactPhone())
-                .contactEmail(a.getCompany().getContactEmail())
-                .createdAt(a.getCompany().getCreatedAt())
-                .updatedAt(a.getCompany().getUpdatedAt())
-                .build())
-            .firstName(a.getFirstName())
-            .lastName(a.getLastName())
-            .birthDate(a.getBirthDate())
-            .phone(a.getPhone())
-            .isItSelf(a.getIsItSelf())
-            .numberOfApplicant(a.getNumberOfApplicant())
-            .under18(a.getUnder18())
-            .parentFullName(a.getParentFullName())
-            .parentPhoneNumber(a.getParentPhoneNumber())
-            .parentEmailAddress(a.getParentEmailAddress())
-            .parentRelationship(a.getParentRelationship())
-            .userNotes(a.getUserNotes())
-            .createdAt(a.getCreatedAt())
-            .updatedAt(a.getUpdatedAt())
-            .build();
+        return ResponseEntity.ok(LanguageCampApplicationDtoMapper.toDetailDto(
+            apps.findDetailByIdAndApplicant_Id(a.getId(), principal.getId()).orElse(a)
+        ));
     }
 }
 

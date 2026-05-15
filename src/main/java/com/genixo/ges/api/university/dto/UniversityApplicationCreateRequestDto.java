@@ -2,9 +2,13 @@ package com.genixo.ges.api.university.dto;
 
 import com.genixo.ges.university.model.EducationLevel;
 import jakarta.validation.constraints.NotNull;
-import lombok.Value;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Value
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class UniversityApplicationCreateRequestDto {
     @NotNull
     EducationLevel educationLevel;

@@ -1,33 +1,32 @@
 package com.genixo.ges.api.languagecamp.dto;
 
-import com.genixo.ges.common.jpa.Address;
+import com.genixo.ges.languagecamp.model.PassportType;
 import jakarta.validation.constraints.Size;
-import java.util.List;
-import java.util.UUID;
+import java.time.LocalDate;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Value;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Value
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class LanguageCampVisaFormUpsertRequestDto {
-    UUID participantId;
+    @Size(max = 64)
+    String passportNumber;
+
+    LocalDate passportValidUntil;
+
+    PassportType passportType;
+
+    LocalDate visaValidFrom;
+
+    LocalDate visaValidUntil;
 
     @Size(max = 128)
-    String birthPlace;
-    @Size(max = 128)
-    String birthCountry;
-
-    Address residenceAddress;
-
-    Boolean visaRejectedBefore;
-    String visaRejectionDetails;
-
-    List<String> visitedCountries;
-
-    UUID bankStatementFileId;
-    UUID biometricPhotoFileId;
+    String visaIssuingCountry;
 
     @Size(max = 128)
-    String appointmentCityPreference;
+    String visaType;
 }
-

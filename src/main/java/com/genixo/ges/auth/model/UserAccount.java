@@ -1,10 +1,13 @@
 package com.genixo.ges.auth.model;
 
+import com.genixo.ges.applicant.model.ApplicantProfile;
 import com.genixo.ges.common.jpa.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.Getter;
@@ -33,5 +36,9 @@ public class UserAccount extends BaseEntity {
     private UserStatus status = UserStatus.ACTIVE;
 
     private Instant lastLoginAt;
+
+    /** Başvuru profili (varsa); listelerde ad-soyad göstermek için. */
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
+    private ApplicantProfile applicantProfile;
 }
 

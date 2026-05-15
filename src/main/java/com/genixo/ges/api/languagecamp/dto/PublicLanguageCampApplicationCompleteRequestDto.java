@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
+import java.util.UUID;
 import lombok.Value;
 
 @Value
@@ -53,6 +54,9 @@ public class PublicLanguageCampApplicationCompleteRequestDto {
 
     @Value
     public static class Application {
+        @NotNull
+        UUID languageCampProjectId;
+
         @NotNull
         LanguageCampCategory category;
 

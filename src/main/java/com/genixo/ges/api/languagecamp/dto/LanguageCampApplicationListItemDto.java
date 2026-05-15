@@ -15,6 +15,9 @@ public class LanguageCampApplicationListItemDto {
     String lastName;
     ApplicationStatus status;
     LanguageCampCategory category;
+    UUID languageCampProjectId;
+    String languageCampProjectTitle;
+    boolean paymentCompleted;
     Instant createdAt;
     Instant updatedAt;
 }

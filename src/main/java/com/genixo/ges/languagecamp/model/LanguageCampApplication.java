@@ -5,10 +5,10 @@ import com.genixo.ges.auth.model.UserAccount;
 import com.genixo.ges.company.model.Company;
 import com.genixo.ges.common.jpa.Address;
 import com.genixo.ges.common.jpa.BaseEntity;
-import com.genixo.ges.program.model.Program;
 import com.genixo.ges.storage.model.StoredFile;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -17,13 +17,18 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 @Getter
 @Setter
@@ -62,9 +67,9 @@ public class LanguageCampApplication extends BaseEntity {
     @Column(nullable = false, length = 32)
     private ApplicationStatus status = ApplicationStatus.DRAFT;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "program_id")
-    private Program program;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "language_camp_project_id", nullable = false)
+    private LanguageCampProject languageCampProject;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 16)
@@ -84,6 +89,16 @@ public class LanguageCampApplication extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(length = 16)
     private PaymentPreference paymentPreference;
+
+    @Column(name = "payment_completed", nullable = false)
+    private boolean paymentCompleted = false;
+
+    /** Başvuru oluşturulurken projeden kopyalanan ücret tutarı. */
+    private BigDecimal priceAmount;
+
+    /** Ücretin para birimi (örn: TRY, USD, EUR). */
+    @Column(length = 8)
+    private String priceCurrency;
 
     private Instant kvkkAcceptedAt;
 
@@ -127,5 +142,17 @@ public class LanguageCampApplication extends BaseEntity {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "bulk_participants_file_id")
     private StoredFile bulkParticipantsFile; // Excel listesi (kurumsal)
+
+    @OneToOne(mappedBy = "application", fetch = FetchType.LAZY)
+    private LanguageCampVisaForm visaForm;
+
+    @OneToMany(
+            mappedBy = "application",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @OrderBy("paymentAt desc")
+    @BatchSize(size = 50)
+    private List<LanguageCampApplicationPayment> payments;
 }
 
