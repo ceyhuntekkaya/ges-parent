@@ -4,10 +4,13 @@ import com.genixo.ges.api.common.dto.PageDto;
 import com.genixo.ges.api.common.exception.ApiProblemException;
 import com.genixo.ges.api.languagecamp.dto.LanguageCampProjectDetailDto;
 import com.genixo.ges.api.languagecamp.dto.LanguageCampProjectPublicListItemDto;
+import com.genixo.ges.company.repo.CompanyRepository;
 import com.genixo.ges.languagecamp.model.EProjectStatus;
 import com.genixo.ges.languagecamp.model.LanguageCampProject;
 import com.genixo.ges.languagecamp.repo.LanguageCampProjectRepository;
 import io.swagger.v3.oas.annotations.Operation;
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.springframework.data.domain.PageRequest;
@@ -25,10 +28,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class LanguageCampProjectPublicController {
 
     private final LanguageCampProjectRepository projects;
+    private final CompanyRepository companies;
     private static final Pattern PORTAL_FILE_URL = Pattern.compile(".*/v1/portal/files/([0-9a-fA-F-]{36})/download.*");
 
-    public LanguageCampProjectPublicController(LanguageCampProjectRepository projects) {
+    public LanguageCampProjectPublicController(
+        LanguageCampProjectRepository projects,
+        CompanyRepository companies
+    ) {
         this.projects = projects;
+        this.companies = companies;
     }
 
     @GetMapping
@@ -36,10 +44,34 @@ public class LanguageCampProjectPublicController {
     public ResponseEntity<PageDto<LanguageCampProjectPublicListItemDto>> listActive(
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "24") int size,
-        @RequestParam(defaultValue = "true") boolean individual
+        @RequestParam(defaultValue = "true") boolean individual,
+        @RequestParam(required = false) String companyCode
     ) {
+        if (!individual && (companyCode == null || companyCode.isBlank())) {
+            return ResponseEntity.ok(emptyPage(page, size));
+        }
+
+        String normalizedCompanyCode = null;
+        if (!individual) {
+            normalizedCompanyCode = companyCode.trim();
+            companies.findByCode(normalizedCompanyCode)
+                .orElseThrow(() -> new ApiProblemException(HttpStatus.BAD_REQUEST, "Invalid companyCode"));
+        }
+
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        var p = projects.findByProjectStatusAndIndividual(EProjectStatus.ACTIVE, individual, pageable);
+        var p = individual
+            ? projects.findOpenForApplication(
+                EProjectStatus.ACTIVE,
+                true,
+                Instant.now(),
+                null,
+                pageable
+            )
+            : projects.findActiveCorporateByCompanyCode(
+                EProjectStatus.ACTIVE,
+                normalizedCompanyCode,
+                pageable
+            );
         var items = p.getContent().stream().map(this::toPublicListItemDto).toList();
 
         return ResponseEntity.ok(PageDto.<LanguageCampProjectPublicListItemDto>builder()
@@ -49,6 +81,16 @@ public class LanguageCampProjectPublicController {
             .totalItems(p.getTotalElements())
             .totalPages(p.getTotalPages())
             .build());
+    }
+
+    private PageDto<LanguageCampProjectPublicListItemDto> emptyPage(int page, int size) {
+        return PageDto.<LanguageCampProjectPublicListItemDto>builder()
+            .items(List.of())
+            .page(page)
+            .size(size)
+            .totalItems(0)
+            .totalPages(0)
+            .build();
     }
 
     @GetMapping("/{id}")

@@ -8,9 +8,13 @@ import com.genixo.ges.api.languagecamp.dto.LanguageCampProjectListItemDto;
 import com.genixo.ges.api.languagecamp.dto.LanguageCampProjectUpdateRequestDto;
 import com.genixo.ges.company.repo.CompanyRepository;
 import com.genixo.ges.languagecamp.model.LanguageCampProject;
+import com.genixo.ges.languagecamp.repo.LanguageCampApplicationRepository;
 import com.genixo.ges.languagecamp.repo.LanguageCampProjectRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -32,10 +36,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class LanguageCampProjectAdminController {
 
     private final LanguageCampProjectRepository projects;
+    private final LanguageCampApplicationRepository applications;
     private final CompanyRepository companies;
 
-    public LanguageCampProjectAdminController(LanguageCampProjectRepository projects, CompanyRepository companies) {
+    public LanguageCampProjectAdminController(
+        LanguageCampProjectRepository projects,
+        LanguageCampApplicationRepository applications,
+        CompanyRepository companies
+    ) {
         this.projects = projects;
+        this.applications = applications;
         this.companies = companies;
     }
 
@@ -47,7 +57,11 @@ public class LanguageCampProjectAdminController {
     ) {
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         var p = projects.findAll(pageable);
-        var items = p.getContent().stream().map(this::toListItemDto).toList();
+        var projectIds = p.getContent().stream().map(LanguageCampProject::getId).toList();
+        var applicationCounts = applicationCountsByProjectId(projectIds);
+        var items = p.getContent().stream()
+            .map(project -> toListItemDto(project, applicationCounts.getOrDefault(project.getId(), 0L)))
+            .toList();
 
         return ResponseEntity.ok(PageDto.<LanguageCampProjectListItemDto>builder()
             .items(items)
@@ -171,7 +185,18 @@ public class LanguageCampProjectAdminController {
         if (req.getIndividual() != null) p.setIndividual(req.getIndividual());
     }
 
-    private LanguageCampProjectListItemDto toListItemDto(LanguageCampProject p) {
+    private Map<UUID, Long> applicationCountsByProjectId(List<UUID> projectIds) {
+        if (projectIds.isEmpty()) {
+            return Map.of();
+        }
+        var counts = new HashMap<UUID, Long>();
+        for (Object[] row : applications.countGroupedByProjectId(projectIds)) {
+            counts.put((UUID) row[0], (Long) row[1]);
+        }
+        return counts;
+    }
+
+    private LanguageCampProjectListItemDto toListItemDto(LanguageCampProject p, long applicationCount) {
         return LanguageCampProjectListItemDto.builder()
             .id(p.getId())
             .title(p.getTitle())
@@ -179,6 +204,8 @@ public class LanguageCampProjectAdminController {
             .individual(p.getIndividual())
             .projectStatus(p.getProjectStatus())
             .projectType(p.getProjectType())
+            .quota(p.getQuota())
+            .applicationCount(applicationCount)
             .createdAt(p.getCreatedAt())
             .updatedAt(p.getUpdatedAt())
             .build();

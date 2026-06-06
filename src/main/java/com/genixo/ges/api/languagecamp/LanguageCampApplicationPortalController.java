@@ -118,12 +118,13 @@ public class LanguageCampApplicationPortalController {
     }
 
     @GetMapping("/{id}")
+    @Transactional(readOnly = true)
     @Operation(operationId = "portalLanguageCampApplicationsGetMine")
     public ResponseEntity<LanguageCampApplicationDetailDto> getMine(
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @PathVariable UUID id
     ) {
-        LanguageCampApplication a = apps.findDetailByIdAndApplicant_Id(id, principal.getId())
+        LanguageCampApplication a = apps.findByIdAndApplicant_Id(id, principal.getId())
             .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Application not found"));
         return ResponseEntity.ok(LanguageCampApplicationDtoMapper.toDetailDto(a));
     }

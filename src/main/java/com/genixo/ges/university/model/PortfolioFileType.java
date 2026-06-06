@@ -10,6 +10,8 @@ public enum PortfolioFileType {
     AUDIO,
     /** PDF döküman. */
     PDF,
+    /** Harici bağlantı (GitHub, Behance, portfolyo sitesi vb.). */
+    LINK,
     /** Diğer dosya türleri. */
     OTHER
 }

@@ -1,6 +1,7 @@
 package com.genixo.ges.storage.model;
 
 public enum StoredFilePurpose {
+    HOME_PAGE_MEDIA,
     PROJECT_MEDIA,
     LANGUAGE_CAMP_GUARDIAN_CONSENT,
     VISA_BANK_STATEMENT,

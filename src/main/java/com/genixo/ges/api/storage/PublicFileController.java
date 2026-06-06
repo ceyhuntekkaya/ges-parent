@@ -39,7 +39,9 @@ public class PublicFileController {
 
         // Backwards-compat: earlier uploads used OTHER by default.
         // We only allow a narrow set of purposes to be public.
-        if (sf.getPurpose() != StoredFilePurpose.PROJECT_MEDIA && sf.getPurpose() != StoredFilePurpose.OTHER) {
+        if (sf.getPurpose() != StoredFilePurpose.HOME_PAGE_MEDIA
+            && sf.getPurpose() != StoredFilePurpose.PROJECT_MEDIA
+            && sf.getPurpose() != StoredFilePurpose.OTHER) {
             throw new ApiProblemException(HttpStatus.NOT_FOUND, "File not found");
         }
 

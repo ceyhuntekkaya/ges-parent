@@ -120,7 +120,12 @@ public class LanguageCampApplicationGroupPortalController {
         a.setCategory(category);
         a.setStatus(ApplicationStatus.DRAFT);
         a.setIsItSelf(false);
-        a.setNumberOfApplicant(siblings.size() + 1);
+        int participantCount = siblings.size() + 1;
+        a.setNumberOfApplicant(participantCount);
+        for (LanguageCampApplication sibling : siblings) {
+            sibling.setNumberOfApplicant(participantCount);
+            apps.save(sibling);
+        }
 
         if (!siblings.isEmpty()) {
             LanguageCampApplication ref = siblings.get(0);

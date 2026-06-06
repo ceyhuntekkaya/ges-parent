@@ -41,8 +41,10 @@ import com.genixo.ges.university.repo.PortfolioSectionRepository;
 import com.genixo.ges.university.repo.UniversityApplicationRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -72,22 +74,29 @@ public class UniversityApplicationAdminController {
     private final UserAccountRepository users;
     private final ApplicantProfileRepository applicantProfiles;
     private final PasswordEncoder passwordEncoder;
+    private final UniversityApplicationDocumentSeeder documentSeeder;
+    private final UniversityApplicationPortfolioSeeder portfolioSeeder;
 
     public UniversityApplicationAdminController(
         UniversityApplicationRepository applications,
         PortfolioSectionRepository portfolioSections,
         UserAccountRepository users,
         ApplicantProfileRepository applicantProfiles,
-        PasswordEncoder passwordEncoder
+        PasswordEncoder passwordEncoder,
+        UniversityApplicationDocumentSeeder documentSeeder,
+        UniversityApplicationPortfolioSeeder portfolioSeeder
     ) {
         this.applications = applications;
         this.portfolioSections = portfolioSections;
         this.users = users;
         this.applicantProfiles = applicantProfiles;
         this.passwordEncoder = passwordEncoder;
+        this.documentSeeder = documentSeeder;
+        this.portfolioSeeder = portfolioSeeder;
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     @Operation(operationId = "adminUniversityApplicationsList")
     public ResponseEntity<PageDto<UniversityApplicationListItemDto>> list(
         @RequestParam(defaultValue = "0") int page,
@@ -202,6 +211,8 @@ public class UniversityApplicationAdminController {
             ua.setStatus(ApplicationStatus.DRAFT);
         }
 
+        documentSeeder.seedFromActiveRequirements(ua);
+        portfolioSeeder.seedMatchingTemplates(ua);
         applications.save(ua);
         return ResponseEntity.status(HttpStatus.CREATED).body(toDetailDto(ua));
     }
@@ -240,6 +251,10 @@ public class UniversityApplicationAdminController {
             throw new ApiProblemException(HttpStatus.BAD_REQUEST, "Başvuru durumu zorunludur.");
         }
 
+        if (req.getEducationLevel() != null) {
+            portfolioSeeder.seedMatchingTemplates(ua);
+        }
+
         applications.save(ua);
         return ResponseEntity.ok(toDetailDto(ua));
     }
@@ -255,6 +270,7 @@ public class UniversityApplicationAdminController {
         List<String> list = ensureMutableList(ua.getDepartmentPreferences());
         list.add(req.getValue());
         ua.setDepartmentPreferences(list);
+        portfolioSeeder.seedMatchingTemplates(ua);
         applications.save(ua);
         return ResponseEntity.ok(toDetailDto(ua));
     }
@@ -272,6 +288,7 @@ public class UniversityApplicationAdminController {
         ensureIndex(list, index);
         list.set(index, req.getValue());
         ua.setDepartmentPreferences(list);
+        portfolioSeeder.seedMatchingTemplates(ua);
         applications.save(ua);
         return ResponseEntity.ok(toDetailDto(ua));
     }
@@ -288,6 +305,7 @@ public class UniversityApplicationAdminController {
         ensureIndex(list, index);
         list.remove(index);
         ua.setDepartmentPreferences(list);
+        portfolioSeeder.seedMatchingTemplates(ua);
         applications.save(ua);
         return ResponseEntity.ok(toDetailDto(ua));
     }
@@ -929,12 +947,49 @@ public class UniversityApplicationAdminController {
     }
 
     private UniversityApplicationListItemDto toListItemDto(UniversityApplication ua) {
+        List<UniversityApplicationTask> tasks = ua.getTasks() == null ? List.of() : ua.getTasks();
+        List<UniversityApplicationMeeting> meetings = ua.getMeetings() == null ? List.of() : ua.getMeetings();
+        List<UniversityApplicationDocument> documents = ua.getDocuments() == null ? List.of() : ua.getDocuments();
+        List<UniversityApplicationPayment> payments = ua.getPayments() == null ? List.of() : ua.getPayments();
+
+        List<Instant> pendingTaskScheduledAts = tasks.stream()
+            .filter(t -> t.getStatus() == UniversityApplicationTaskStatus.PENDING)
+            .map(UniversityApplicationTask::getScheduledAt)
+            .filter(d -> d != null)
+            .sorted(Comparator.naturalOrder())
+            .toList();
+        int pendingTaskCount = (int) tasks.stream()
+            .filter(t -> t.getStatus() == UniversityApplicationTaskStatus.PENDING)
+            .count();
+        int completedTaskCount = (int) tasks.stream()
+            .filter(t -> t.getStatus() == UniversityApplicationTaskStatus.DONE)
+            .count();
+
+        int documentsWithFileCount = (int) documents.stream()
+            .filter(d -> d.getDocumentUrl() != null && !d.getDocumentUrl().isBlank())
+            .count();
+
+        BigDecimal totalPaidAmount = payments.stream()
+            .map(UniversityApplicationPayment::getAmount)
+            .filter(a -> a != null)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         return UniversityApplicationListItemDto.builder()
             .id(ua.getId())
             .firstName(ua.getFirstName() != null ? ua.getFirstName() : (ua.getApplicantProfile() == null ? null : ua.getApplicantProfile().getFirstName()))
             .lastName(ua.getLastName() != null ? ua.getLastName() : (ua.getApplicantProfile() == null ? null : ua.getApplicantProfile().getLastName()))
             .status(ua.getStatus())
             .educationLevel(ua.getEducationLevel())
+            .followerPerson(ua.getFollowerPerson())
+            .priceAmount(ua.getPriceAmount())
+            .priceCurrency(ua.getPriceCurrency())
+            .totalPaidAmount(totalPaidAmount)
+            .pendingTaskCount(pendingTaskCount)
+            .completedTaskCount(completedTaskCount)
+            .pendingTaskScheduledAts(pendingTaskScheduledAts)
+            .meetingCount(meetings.size())
+            .documentCount(documents.size())
+            .documentsWithFileCount(documentsWithFileCount)
             .createdAt(ua.getCreatedAt())
             .updatedAt(ua.getUpdatedAt())
             .build();
@@ -1024,13 +1079,7 @@ public class UniversityApplicationAdminController {
                     .required(s.getRequired())
                     .sortOrder(s.getSortOrder())
                     .portfolioSectionId(s.getPortfolioSection() == null ? null : s.getPortfolioSection().getId())
-                    .portfolioSection(s.getPortfolioSection() == null ? null : PortfolioSectionDto.builder()
-                        .id(s.getPortfolioSection().getId())
-                        .name(s.getPortfolioSection().getName())
-                        .description(s.getPortfolioSection().getDescription())
-                        .createdAt(s.getPortfolioSection().getCreatedAt())
-                        .updatedAt(s.getPortfolioSection().getUpdatedAt())
-                        .build())
+                    .portfolioSection(PortfolioSectionMapper.toDto(s.getPortfolioSection()))
                     .sectionNameOverride(s.getSectionNameOverride())
                     .sectionDescriptionOverride(s.getSectionDescriptionOverride())
                     .files(s.getFiles() == null ? List.of() : s.getFiles().stream()

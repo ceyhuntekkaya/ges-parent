@@ -49,8 +49,22 @@ public class LanguageCampApplicationDetailDto {
     String parentEmailAddress;
     String parentRelationship;
     String userNotes;
+    String followerPerson;
+    String notes;
+
+    List<LanguageCampApplicationNoteDto> applicationNotes;
+    List<LanguageCampApplicationMeetingDto> meetings;
+    List<LanguageCampApplicationTaskDto> tasks;
+    List<LanguageCampApplicationDocumentDto> documents;
 
     LanguageCampVisaFormDto visaForm;
+
+    UUID applicantUserId;
+    String applicantEmail;
+    String applicantDisplayName;
+    Integer participantIndex;
+    Integer participantCount;
+    List<LanguageCampApplicationGroupParticipantSummaryDto> groupParticipants;
 
     Instant createdAt;
     Instant updatedAt;

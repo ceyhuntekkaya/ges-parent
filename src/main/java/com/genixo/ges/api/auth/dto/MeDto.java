@@ -11,6 +11,8 @@ import lombok.Value;
 public class MeDto {
     UUID id;
     String email;
+    /** Ad soyad; profil yoksa e-posta. */
+    String displayName;
     UserRole role;
     UserStatus status;
 }

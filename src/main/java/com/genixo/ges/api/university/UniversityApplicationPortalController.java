@@ -30,17 +30,24 @@ import com.genixo.ges.university.model.UniversityApplicationPortfolioSection;
 import com.genixo.ges.university.model.UniversityApplicationTask;
 import com.genixo.ges.university.model.UniversityApplication;
 import com.genixo.ges.university.model.UniversityApplicationTaskStatus;
+import com.genixo.ges.storage.FileStorageService;
+import com.genixo.ges.storage.model.StoredFile;
 import com.genixo.ges.university.repo.PortfolioSectionRepository;
 import com.genixo.ges.university.repo.UniversityApplicationRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
+import java.nio.file.Files;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,15 +69,27 @@ public class UniversityApplicationPortalController {
     private final UniversityApplicationRepository applications;
     private final UserAccountRepository users;
     private final PortfolioSectionRepository portfolioSections;
+    private final UniversityApplicationDocumentSeeder documentSeeder;
+    private final UniversityApplicationPortfolioSeeder portfolioSeeder;
+    private final PortalUniversityApplicationFileService applicationFiles;
+    private final FileStorageService storage;
 
     public UniversityApplicationPortalController(
         UniversityApplicationRepository applications,
         UserAccountRepository users,
-        PortfolioSectionRepository portfolioSections
+        PortfolioSectionRepository portfolioSections,
+        UniversityApplicationDocumentSeeder documentSeeder,
+        UniversityApplicationPortfolioSeeder portfolioSeeder,
+        PortalUniversityApplicationFileService applicationFiles,
+        FileStorageService storage
     ) {
         this.applications = applications;
         this.users = users;
         this.portfolioSections = portfolioSections;
+        this.documentSeeder = documentSeeder;
+        this.portfolioSeeder = portfolioSeeder;
+        this.applicationFiles = applicationFiles;
+        this.storage = storage;
     }
 
     @PostMapping
@@ -80,6 +99,10 @@ public class UniversityApplicationPortalController {
         @AuthenticationPrincipal AuthUserPrincipal principal,
         @Valid @RequestBody UniversityApplicationCreateRequestDto req
     ) {
+        if ("USER".equals(principal.getRole())) {
+            throw new ApiProblemException(HttpStatus.FORBIDDEN, "University applications cannot be created by portal users");
+        }
+
         UserAccount applicant = users.findById(principal.getId())
             .orElseThrow(() -> new ApiProblemException(HttpStatus.UNAUTHORIZED, "User not found"));
 
@@ -87,6 +110,8 @@ public class UniversityApplicationPortalController {
         ua.setApplicant(applicant);
         ua.setEducationLevel(req.getEducationLevel());
         ua.setStatus(ApplicationStatus.DRAFT);
+        documentSeeder.seedFromActiveRequirements(ua);
+        portfolioSeeder.seedMatchingTemplates(ua);
         applications.save(ua);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(toDetailDto(ua));
@@ -121,6 +146,29 @@ public class UniversityApplicationPortalController {
         UniversityApplication ua = applications.findByIdAndApplicant_Id(id, principal.getId())
             .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Application not found"));
         return ResponseEntity.ok(toDetailDto(ua));
+    }
+
+    @GetMapping("/{id}/files/{storedFileId}/download")
+    @Transactional(readOnly = true)
+    @Operation(operationId = "portalUniversityApplicationsDownloadFile")
+    public ResponseEntity<Resource> downloadFile(
+        @AuthenticationPrincipal AuthUserPrincipal principal,
+        @PathVariable UUID id,
+        @PathVariable UUID storedFileId
+    ) {
+        StoredFile sf = applicationFiles.resolveForApplicant(id, storedFileId, principal.getId());
+        var path = storage.resolvePath(sf);
+        if (!Files.exists(path)) {
+            throw new ApiProblemException(HttpStatus.NOT_FOUND, "File not found on disk");
+        }
+
+        Resource res = new FileSystemResource(path);
+        String ct = sf.getContentType() == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : sf.getContentType();
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + sf.getOriginalFilename().replace("\"", "") + "\"")
+            .contentType(MediaType.parseMediaType(ct))
+            .contentLength(sf.getSizeBytes())
+            .body(res);
     }
 
     @PatchMapping("/{id}")
@@ -163,6 +211,10 @@ public class UniversityApplicationPortalController {
         if (req.getPriceCurrency() != null) ua.setPriceCurrency(req.getPriceCurrency());
         if (req.getNotes() != null) ua.setNotes(req.getNotes());
 
+        if (req.getEducationLevel() != null) {
+            portfolioSeeder.seedMatchingTemplates(ua);
+        }
+
         applications.save(ua);
         return ResponseEntity.ok(toDetailDto(ua));
     }
@@ -180,6 +232,7 @@ public class UniversityApplicationPortalController {
         list.add(req.getValue());
         ua.setDepartmentPreferences(list);
         markPreferencesCompletedIfNeeded(ua);
+        portfolioSeeder.seedMatchingTemplates(ua);
         applications.save(ua);
         return ResponseEntity.ok(toDetailDto(ua));
     }
@@ -199,6 +252,7 @@ public class UniversityApplicationPortalController {
         list.set(index, req.getValue());
         ua.setDepartmentPreferences(list);
         markPreferencesCompletedIfNeeded(ua);
+        portfolioSeeder.seedMatchingTemplates(ua);
         applications.save(ua);
         return ResponseEntity.ok(toDetailDto(ua));
     }
@@ -217,6 +271,7 @@ public class UniversityApplicationPortalController {
         list.remove(index);
         ua.setDepartmentPreferences(list);
         markPreferencesCompletedIfNeeded(ua);
+        portfolioSeeder.seedMatchingTemplates(ua);
         applications.save(ua);
         return ResponseEntity.ok(toDetailDto(ua));
     }
@@ -911,13 +966,7 @@ public class UniversityApplicationPortalController {
                     .required(s.getRequired())
                     .sortOrder(s.getSortOrder())
                     .portfolioSectionId(s.getPortfolioSection() == null ? null : s.getPortfolioSection().getId())
-                    .portfolioSection(s.getPortfolioSection() == null ? null : PortfolioSectionDto.builder()
-                        .id(s.getPortfolioSection().getId())
-                        .name(s.getPortfolioSection().getName())
-                        .description(s.getPortfolioSection().getDescription())
-                        .createdAt(s.getPortfolioSection().getCreatedAt())
-                        .updatedAt(s.getPortfolioSection().getUpdatedAt())
-                        .build())
+                    .portfolioSection(PortfolioSectionMapper.toDto(s.getPortfolioSection()))
                     .sectionNameOverride(s.getSectionNameOverride())
                     .sectionDescriptionOverride(s.getSectionDescriptionOverride())
                     .files(s.getFiles() == null ? List.of() : s.getFiles().stream()

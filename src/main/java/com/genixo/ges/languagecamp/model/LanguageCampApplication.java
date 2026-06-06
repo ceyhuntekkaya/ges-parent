@@ -124,6 +124,14 @@ public class LanguageCampApplication extends BaseEntity {
     @Column(name = "user_notes", columnDefinition = "TEXT")
     private String userNotes;
 
+    /** Admin tarafında takip eden kişi. */
+    @Column(name = "follower_person", length = 128)
+    private String followerPerson;
+
+    /** Admin dahili notları (başvuru sahibi user_notes alanından ayrı). */
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id")
     private Company company;
@@ -154,5 +162,25 @@ public class LanguageCampApplication extends BaseEntity {
     @OrderBy("paymentAt desc")
     @BatchSize(size = 50)
     private List<LanguageCampApplicationPayment> payments;
+
+    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("writtenAt desc")
+    @BatchSize(size = 50)
+    private List<LanguageCampApplicationNote> applicationNotes;
+
+    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("meetingAt desc")
+    @BatchSize(size = 50)
+    private List<LanguageCampApplicationMeeting> meetings;
+
+    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("scheduledAt desc")
+    @BatchSize(size = 50)
+    private List<LanguageCampApplicationTask> tasks;
+
+    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdAt desc")
+    @BatchSize(size = 50)
+    private List<LanguageCampApplicationDocument> documents;
 }
 

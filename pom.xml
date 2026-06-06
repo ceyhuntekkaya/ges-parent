@@ -213,13 +213,13 @@
                         </platforms>
                     </from>
                     <to>
-                        <image>registry.hub.docker.com/ctekkaya/ges:2.0</image>
+                        <image>registry.hub.docker.com/ctekkaya/travel-ges-parent:4.0</image>
                         <auth>
-                            <username>${JIB_REGISTRY_USERNAME}</username>
-                            <password>${JIB_REGISTRY_PASSWORD}</password>
+                            <username>ctekkaya</username>
+                            <password>Str421900*</password>
                         </auth>
                     </to>
-                    <skip>true</skip>
+                    <skip>false</skip>
                 </configuration>
             </plugin>
             <plugin>

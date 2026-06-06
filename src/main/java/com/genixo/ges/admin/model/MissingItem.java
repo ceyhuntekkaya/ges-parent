@@ -29,7 +29,7 @@ public class MissingItem extends BaseEntity {
     @Column(nullable = false)
     private UUID applicationId;
 
-    private UUID relatedEntityId; // participantId / portfolioDocumentId / referenceLetterId
+    private UUID relatedEntityId; // participantId / referenceLetterId / ...
 
     @Column(nullable = false, length = 128)
     private String itemKey; // e.g. "IELTS_RESULT", "PASSPORT_COPY", "BANK_STATEMENT"

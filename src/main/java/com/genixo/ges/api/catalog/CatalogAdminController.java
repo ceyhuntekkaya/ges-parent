@@ -4,8 +4,11 @@ import com.genixo.ges.api.catalog.dto.CountryDto;
 import com.genixo.ges.api.catalog.dto.CountryUpsertRequestDto;
 import com.genixo.ges.api.catalog.dto.DepartmentDto;
 import com.genixo.ges.api.catalog.dto.DepartmentUpsertRequestDto;
+import com.genixo.ges.api.catalog.dto.PortfolioSectionUpsertRequestDto;
 import com.genixo.ges.api.catalog.dto.UniversityDto;
 import com.genixo.ges.api.catalog.dto.UniversityUpsertRequestDto;
+import com.genixo.ges.api.university.PortfolioSectionMapper;
+import com.genixo.ges.api.university.dto.PortfolioSectionDto;
 import com.genixo.ges.api.common.dto.PageDto;
 import com.genixo.ges.api.common.exception.ApiProblemException;
 import com.genixo.ges.catalog.model.Country;
@@ -14,6 +17,8 @@ import com.genixo.ges.catalog.model.University;
 import com.genixo.ges.catalog.repo.CountryRepository;
 import com.genixo.ges.catalog.repo.DepartmentRepository;
 import com.genixo.ges.catalog.repo.UniversityRepository;
+import com.genixo.ges.university.model.PortfolioSection;
+import com.genixo.ges.university.repo.PortfolioSectionRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -39,11 +44,18 @@ public class CatalogAdminController {
     private final CountryRepository countries;
     private final UniversityRepository universities;
     private final DepartmentRepository departments;
+    private final PortfolioSectionRepository portfolioSections;
 
-    public CatalogAdminController(CountryRepository countries, UniversityRepository universities, DepartmentRepository departments) {
+    public CatalogAdminController(
+        CountryRepository countries,
+        UniversityRepository universities,
+        DepartmentRepository departments,
+        PortfolioSectionRepository portfolioSections
+    ) {
         this.countries = countries;
         this.universities = universities;
         this.departments = departments;
+        this.portfolioSections = portfolioSections;
     }
 
     // Countries
@@ -207,6 +219,74 @@ public class CatalogAdminController {
         if (!departments.existsById(id)) throw new ApiProblemException(HttpStatus.NOT_FOUND, "Department not found");
         departments.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // Portfolio sections (catalog templates)
+    @GetMapping("/portfolio-sections")
+    @Operation(operationId = "adminCatalogPortfolioSectionsList")
+    public ResponseEntity<PageDto<PortfolioSectionDto>> listPortfolioSections(
+        @RequestParam(required = false) String q,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "50") int size
+    ) {
+        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "sortOrder", "name"));
+        var p = (q == null || q.isBlank())
+            ? portfolioSections.findAll(pageable)
+            : portfolioSections.findByNameContainingIgnoreCase(q.trim(), pageable);
+        return ResponseEntity.ok(PageDto.<PortfolioSectionDto>builder()
+            .items(p.getContent().stream().map(PortfolioSectionMapper::toDto).toList())
+            .page(p.getNumber())
+            .size(p.getSize())
+            .totalItems(p.getTotalElements())
+            .totalPages(p.getTotalPages())
+            .build());
+    }
+
+    @PostMapping("/portfolio-sections")
+    @Transactional
+    @Operation(operationId = "adminCatalogPortfolioSectionsCreate")
+    public ResponseEntity<PortfolioSectionDto> createPortfolioSection(@Valid @RequestBody PortfolioSectionUpsertRequestDto req) {
+        PortfolioSection s = new PortfolioSection();
+        applyPortfolioSectionUpsert(s, req);
+        portfolioSections.save(s);
+        return ResponseEntity.status(HttpStatus.CREATED).body(PortfolioSectionMapper.toDto(s));
+    }
+
+    @PutMapping("/portfolio-sections/{id}")
+    @Transactional
+    @Operation(operationId = "adminCatalogPortfolioSectionsUpdate")
+    public ResponseEntity<PortfolioSectionDto> updatePortfolioSection(
+        @PathVariable UUID id,
+        @Valid @RequestBody PortfolioSectionUpsertRequestDto req
+    ) {
+        PortfolioSection s = portfolioSections.findById(id)
+            .orElseThrow(() -> new ApiProblemException(HttpStatus.NOT_FOUND, "Portfolio section not found"));
+        applyPortfolioSectionUpsert(s, req);
+        portfolioSections.save(s);
+        return ResponseEntity.ok(PortfolioSectionMapper.toDto(s));
+    }
+
+    @DeleteMapping("/portfolio-sections/{id}")
+    @Transactional
+    @Operation(operationId = "adminCatalogPortfolioSectionsDelete")
+    public ResponseEntity<Void> deletePortfolioSection(@PathVariable UUID id) {
+        if (!portfolioSections.existsById(id)) {
+            throw new ApiProblemException(HttpStatus.NOT_FOUND, "Portfolio section not found");
+        }
+        portfolioSections.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    private static void applyPortfolioSectionUpsert(PortfolioSection s, PortfolioSectionUpsertRequestDto req) {
+        s.setName(req.getName().trim());
+        s.setDescription(req.getDescription());
+        s.setEducationLevel(req.getEducationLevel());
+        s.setDepartmentKeyword(req.getDepartmentKeyword() == null ? null : req.getDepartmentKeyword().trim());
+        s.setSortOrder(req.getSortOrder());
+        s.setDefaultRequired(req.getDefaultRequired());
+        if (req.getActive() != null) {
+            s.setActive(req.getActive());
+        }
     }
 
     private CountryDto toCountryDto(Country c) {

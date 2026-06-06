@@ -5,12 +5,14 @@ import com.genixo.ges.api.auth.dto.LoginRequestDto;
 import com.genixo.ges.api.auth.dto.MeDto;
 import com.genixo.ges.api.auth.dto.RefreshRequestDto;
 import com.genixo.ges.api.auth.dto.RegisterRequestDto;
+import com.genixo.ges.auth.model.UserAccount;
 import com.genixo.ges.auth.repo.UserAccountRepository;
 import com.genixo.ges.security.AuthUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -66,13 +68,29 @@ public class AuthController {
     @Operation(operationId = "authMe")
     public ResponseEntity<MeDto> me(@AuthenticationPrincipal AuthUserPrincipal principal) {
         // principal has minimal fields; return canonical values from DB
-        var ua = users.findById(principal.getId()).orElseThrow();
+        var ua = users.findByIdWithApplicantProfile(principal.getId()).orElseThrow();
         return ResponseEntity.ok(MeDto.builder()
             .id(ua.getId())
             .email(ua.getEmail())
+            .displayName(displayNameFor(ua))
             .role(ua.getRole())
             .status(ua.getStatus())
             .build());
+    }
+
+    private static String displayNameFor(UserAccount ua) {
+        var profile = ua.getApplicantProfile();
+        if (profile != null) {
+            String joined = Stream.of(profile.getFirstName(), profile.getLastName())
+                .filter(s -> s != null && !s.isBlank())
+                .map(String::trim)
+                .reduce((a, b) -> a + " " + b)
+                .orElse("");
+            if (!joined.isBlank()) {
+                return joined;
+            }
+        }
+        return ua.getEmail();
     }
 }
 

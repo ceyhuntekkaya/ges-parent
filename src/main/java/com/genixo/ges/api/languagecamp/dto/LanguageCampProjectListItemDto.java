@@ -16,6 +16,8 @@ public class LanguageCampProjectListItemDto {
     Boolean individual;
     EProjectStatus projectStatus;
     EProjectType projectType;
+    Integer quota;
+    Long applicationCount;
     Instant createdAt;
     Instant updatedAt;
 }

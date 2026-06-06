@@ -46,6 +46,7 @@ public class SecurityConfig {
                     "/swagger-ui/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/v1/public/language-camp-projects/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/v1/public/home-page").permitAll()
                 .requestMatchers(HttpMethod.GET, "/v1/public/files/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/v1/public/language-camp-applications/complete").permitAll()
                 .requestMatchers(HttpMethod.POST, "/v1/auth/login", "/v1/auth/register", "/v1/auth/refresh").permitAll()

@@ -80,8 +80,9 @@ public class PortalFileController {
         Resource res = new FileSystemResource(path);
         String ct = sf.getContentType() == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : sf.getContentType();
 
+        // inline so images/videos/PDFs can render in embedded previews.
         return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + sf.getOriginalFilename().replace("\"", "") + "\"")
+            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + sf.getOriginalFilename().replace("\"", "") + "\"")
             .contentType(MediaType.parseMediaType(ct))
             .contentLength(sf.getSizeBytes())
             .body(res);

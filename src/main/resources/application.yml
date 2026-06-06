@@ -17,7 +17,8 @@ spring:
             platform: org.hibernate.engine.trans1"action.jta.platform.internal.NoJtaPlatform
   datasource:
     dbName: ges_project_app
-    dbUrl: jdbc:postgresql://localhost:5432/
+    #dbUrl: jdbc:postgresql://localhost:5432/
+    dbUrl: jdbc:postgresql://postgres:5432/
 
 
     url: ${spring.datasource.dbUrl}${spring.datasource.dbName}
@@ -77,7 +78,8 @@ logging:
     org.hibernate.orm.jdbc.bind: OFF
 
 storage:
-  base: /Users/macpro/Desktop/file/
+  #base: /Users/macpro/Desktop/file/
+  base: /app/uploads/
 
 
 
